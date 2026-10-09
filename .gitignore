@@ -13,6 +13,7 @@ obj/
 *.db
 *.db-shm
 *.db-wal
+*hangfire*
 /data/
 
 ## Node / Web
@@ -28,3 +29,5 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 scratch/
+.env
+*.env

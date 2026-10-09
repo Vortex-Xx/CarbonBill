@@ -45,6 +45,7 @@ public static class AuthEndpoints
         {
             var email = request.Email.Trim().ToLowerInvariant();
             var user = await dbContext.Users
+                .IgnoreQueryFilters()
                 .Include(u => u.Memberships)
                 .ThenInclude(m => m.Organization)
                 .FirstOrDefaultAsync(u => u.Email == email && u.IsActive, ct);

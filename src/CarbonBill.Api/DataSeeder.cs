@@ -25,10 +25,28 @@ public static class DataSeeder
 
         logger.LogInformation("Ensuring SQLite database and tables are created...");
         await identityDb.Database.EnsureCreatedAsync();
-        await auditDb.Database.EnsureCreatedAsync();
-        await documentsDb.Database.EnsureCreatedAsync();
-        await extractionDb.Database.EnsureCreatedAsync();
-        await reviewDb.Database.EnsureCreatedAsync();
+
+        var otherContexts = new DbContext[] { auditDb, documentsDb, extractionDb, reviewDb };
+        foreach (var ctx in otherContexts)
+        {
+            try
+            {
+                var script = ctx.Database.GenerateCreateScript();
+                if (!string.IsNullOrWhiteSpace(script))
+                {
+                    var statements = script.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    foreach (var stmt in statements)
+                    {
+                        var safeStmt = stmt.Replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", StringComparison.OrdinalIgnoreCase);
+                        await ctx.Database.ExecuteSqlRawAsync(safeStmt + ";");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Table ensure creation warning for context {Context}", ctx.GetType().Name);
+            }
+        }
 
         if (await identityDb.Organizations.AnyAsync())
         {

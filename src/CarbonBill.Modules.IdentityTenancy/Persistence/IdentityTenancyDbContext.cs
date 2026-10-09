@@ -65,8 +65,8 @@ public class IdentityTenancyDbContext(
             // Global Query Filter for Tenancy Isolation
             entity.HasQueryFilter(e =>
                 _tenantContext.IsPlatformAdmin ||
-                !_tenantContext.CurrentOrgId.HasValue ||
-                e.OrgId == _tenantContext.CurrentOrgId.Value);
+                _tenantContext.CurrentOrgId == null ||
+                e.OrgId == _tenantContext.CurrentOrgId);
         });
 
         // Invitation (Tenant-scoped)
@@ -87,8 +87,8 @@ public class IdentityTenancyDbContext(
             // Global Query Filter
             entity.HasQueryFilter(e =>
                 _tenantContext.IsPlatformAdmin ||
-                !_tenantContext.CurrentOrgId.HasValue ||
-                e.OrgId == _tenantContext.CurrentOrgId.Value);
+                _tenantContext.CurrentOrgId == null ||
+                e.OrgId == _tenantContext.CurrentOrgId);
         });
 
         // RefreshToken

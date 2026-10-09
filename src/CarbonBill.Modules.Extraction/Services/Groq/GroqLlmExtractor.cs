@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CarbonBill.Modules.Extraction.Services.Normalization;
+using CarbonBill.Modules.Extraction.Services.Tracing;
 using CarbonBill.SharedKernel.Providers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -37,7 +38,8 @@ public interface IGroqLlmExtractor
 public class GroqLlmExtractor(
     HttpClient httpClient,
     IConfiguration configuration,
-    ILogger<GroqLlmExtractor> logger) : IGroqLlmExtractor
+    ILogger<GroqLlmExtractor> logger,
+    ILangSmithTracer? langSmithTracer = null) : IGroqLlmExtractor
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -66,6 +68,8 @@ public class GroqLlmExtractor(
             logger.LogWarning("Groq API key not configured. Using rule-based semantic parser fallback.");
             return FallbackRuleBasedExtraction(rawOcrText);
         }
+
+        var startTimeUtc = DateTime.UtcNow;
 
         try
         {
@@ -119,6 +123,21 @@ public class GroqLlmExtractor(
             {
                 var errorText = await response.Content.ReadAsStringAsync(ct);
                 logger.LogError("Groq API returned HTTP {StatusCode}: {Error}", response.StatusCode, errorText);
+
+                if (langSmithTracer != null)
+                {
+                    await langSmithTracer.TraceRunAsync(
+                        "GroqLlmExtractor",
+                        "llm",
+                        new { prompt = userPrompt, file = fileName },
+                        null,
+                        startTimeUtc,
+                        DateTime.UtcNow,
+                        new Dictionary<string, object> { ["model"] = _model, ["provider"] = "Groq", ["fileName"] = fileName },
+                        $"HTTP {response.StatusCode}: {errorText}",
+                        ct);
+                }
+
                 return FallbackRuleBasedExtraction(rawOcrText);
             }
 
@@ -140,6 +159,37 @@ public class GroqLlmExtractor(
             if (parsed == null)
             {
                 return FallbackRuleBasedExtraction(rawOcrText);
+            }
+
+            if (langSmithTracer != null)
+            {
+                await langSmithTracer.TraceRunAsync(
+                    "GroqLlmExtractor",
+                    "llm",
+                    new { prompt = userPrompt, file = fileName },
+                    new
+                    {
+                        rawResponse = contentString,
+                        vendor = parsed.Vendor,
+                        billNumber = parsed.BillNumber,
+                        docType = parsed.DocType,
+                        quantity = parsed.Quantity,
+                        unit = parsed.Unit,
+                        amountBdt = parsed.AmountBdt,
+                        confidence = parsed.Confidence,
+                        reasoning = parsed.Reasoning
+                    },
+                    startTimeUtc,
+                    DateTime.UtcNow,
+                    new Dictionary<string, object>
+                    {
+                        ["model"] = _model,
+                        ["provider"] = "Groq",
+                        ["docType"] = parsed.DocType ?? "Unknown",
+                        ["fileName"] = fileName
+                    },
+                    null,
+                    ct);
             }
 
             var fields = new List<ExtractedFieldResult>
@@ -177,6 +227,21 @@ public class GroqLlmExtractor(
         catch (Exception ex)
         {
             logger.LogError(ex, "Exception invoking Groq LLM extraction.");
+
+            if (langSmithTracer != null)
+            {
+                await langSmithTracer.TraceRunAsync(
+                    "GroqLlmExtractor",
+                    "llm",
+                    new { file = fileName, ocrLength = rawOcrText.Length },
+                    null,
+                    startTimeUtc,
+                    DateTime.UtcNow,
+                    new Dictionary<string, object> { ["model"] = _model, ["provider"] = "Groq", ["fileName"] = fileName },
+                    ex.Message,
+                    ct);
+            }
+
             return FallbackRuleBasedExtraction(rawOcrText);
         }
     }
