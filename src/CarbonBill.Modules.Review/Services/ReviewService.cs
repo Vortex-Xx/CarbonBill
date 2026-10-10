@@ -145,8 +145,13 @@ public class ReviewService(
             ));
         }
 
-        // Must be sorted lowest confidence first as per spec
-        return queueItems.OrderBy(q => q.OverallConfidence).Take(limit).ToList();
+        // Must be sorted lowest confidence first as per spec, prioritizing actionable items with extracted fields
+        return queueItems
+            .OrderByDescending(q => q.Fields.Count > 0)
+            .ThenBy(q => q.OverallConfidence)
+            .ThenByDescending(q => q.CapturedAtUtc)
+            .Take(limit)
+            .ToList();
     }
 
     public async Task<Result<bool>> UpdateDocumentFieldsAsync(

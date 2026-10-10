@@ -39,6 +39,12 @@ export function DocumentImageViewer({
     setRotation(0);
   }
 
+  React.useEffect(() => {
+    setImageError(false);
+    setZoom(1);
+    setRotation(0);
+  }, [documentId]);
+
   // Parse bounding box if present
   let activeBbox: { left: number; top: number; width: number; height: number } | null = null;
   if (activeField?.boundingBoxJson) {
@@ -50,14 +56,36 @@ export function DocumentImageViewer({
   }
 
   const fileUrl = documentId ? `/api/v1/documents/${documentId}/file` : null;
-  const vendorName = fields.find((f) => f.fieldName === 'Vendor')?.normalizedValue ||
-                     fields.find((f) => f.fieldName === 'Vendor')?.rawValue ||
-                     'ইউটিলিটি চালান (Utility Provider)';
-  const billNo = fields.find((f) => f.fieldName === 'BillNumber')?.rawValue || 'N/A';
-  const period = fields.find((f) => f.fieldName === 'BillingPeriod')?.rawValue || 'চলতি মাস';
-  const quantity = fields.find((f) => f.fieldName === 'Quantity')?.rawValue || '০';
-  const unit = fields.find((f) => f.fieldName === 'Unit')?.rawValue || '';
-  const amount = fields.find((f) => f.fieldName === 'AmountBdt')?.rawValue || '০.০০';
+
+  const findFieldVal = (name: string) => {
+    const f = fields.find(
+      (item) => item.fieldName?.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    return f?.correctedValue || f?.normalizedValue || f?.rawValue;
+  };
+
+  const vendorName =
+    findFieldVal('Vendor') ||
+    findFieldVal('Organization') ||
+    findFieldVal('Provider') ||
+    'ইউটিলিটি চালান (Utility Provider)';
+  const billNo =
+    findFieldVal('BillNumber') ||
+    findFieldVal('BillNo') ||
+    findFieldVal('AccountNumber') ||
+    'N/A';
+  const period =
+    findFieldVal('BillingPeriod') ||
+    findFieldVal('BillMonth') ||
+    findFieldVal('Period') ||
+    'চলতি মাস';
+  const quantity = findFieldVal('Quantity') || '০';
+  const unit = findFieldVal('Unit') || '';
+  const amount =
+    findFieldVal('AmountBdt') ||
+    findFieldVal('Amount') ||
+    findFieldVal('TotalAmount') ||
+    '০.০০';
 
   return (
     <div className="flex flex-col h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-md">

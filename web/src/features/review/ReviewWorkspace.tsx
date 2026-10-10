@@ -19,7 +19,7 @@ interface ReviewWorkspaceProps {
 
 export function ReviewWorkspace({ onBack }: ReviewWorkspaceProps) {
   const [queue, setQueue] = useState<ReviewQueueItem[]>([]);
-  const [selectedDocIndex, setSelectedDocIndex] = useState<number>(0);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [activeField, setActiveField] = useState<ReviewField | null>(null);
   const [filterType, setFilterType] = useState<string>('');
   const [isBulkEnabled, setIsBulkEnabled] = useState<boolean>(false);
@@ -39,29 +39,40 @@ export function ReviewWorkspace({ onBack }: ReviewWorkspaceProps) {
       // Select target docId from query params if specified
       const params = new URLSearchParams(window.location.search);
       const targetDocId = params.get('docId');
-      if (targetDocId && items.length > 0) {
-        const foundIdx = items.findIndex((d) => d.documentId.toLowerCase() === targetDocId.toLowerCase());
-        if (foundIdx !== -1) {
-          setSelectedDocIndex(foundIdx);
+      if (targetDocId && items.some((d) => d.documentId.toLowerCase() === targetDocId.toLowerCase())) {
+        setSelectedDocId(targetDocId);
+      } else if (!selectedDocId || !items.some((d) => d.documentId === selectedDocId)) {
+        // Prioritize the newest document that has extracted fields (e.g. 1_compressed.webp)
+        const withFields = items.filter((d) => d.fields && d.fields.length > 0);
+        if (withFields.length > 0) {
+          const newest = [...withFields].sort(
+            (a, b) => new Date(b.capturedAtUtc).getTime() - new Date(a.capturedAtUtc).getTime()
+          )[0];
+          setSelectedDocId(newest.documentId);
+        } else if (items.length > 0) {
+          setSelectedDocId(items[0].documentId);
         }
       }
     } finally {
       setIsLoading(false);
     }
-  }, [filterType]);
+  }, [filterType, selectedDocId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const currentDoc: ReviewQueueItem | undefined = queue[selectedDocIndex];
+  const currentDoc: ReviewQueueItem | undefined =
+    queue.find((d) => d.documentId === selectedDocId) || queue[0];
 
   const handleNextDocument = useCallback(() => {
     if (queue.length > 0) {
-      setSelectedDocIndex((prev) => (prev + 1) % queue.length);
+      const currIdx = queue.findIndex((d) => d.documentId === currentDoc?.documentId);
+      const nextIdx = currIdx === -1 ? 0 : (currIdx + 1) % queue.length;
+      setSelectedDocId(queue[nextIdx].documentId);
       setActiveField(null);
     }
-  }, [queue.length]);
+  }, [queue, currentDoc?.documentId]);
 
   const handleConfirmCurrent = useCallback(
     async (payload: ConfirmRequest) => {
@@ -72,15 +83,13 @@ export function ReviewWorkspace({ onBack }: ReviewWorkspaceProps) {
         setBannerMessage(`চালান ${currentDoc.fileName} সফলভাবে অনুমোদিত হয়েছে!`);
         setTimeout(() => setBannerMessage(null), 3000);
 
-        // Remove from queue and advance
-        setQueue((prev) => prev.filter((d) => d.documentId !== currentDoc.documentId));
-        if (selectedDocIndex >= queue.length - 1) {
-          setSelectedDocIndex(0);
-        }
+        const currId = currentDoc.documentId;
+        setQueue((prev) => prev.filter((d) => d.documentId !== currId));
+        setSelectedDocId(null);
         setActiveField(null);
       }
     },
-    [currentDoc, queue.length, selectedDocIndex]
+    [currentDoc]
   );
 
   const handleRejectRetake = useCallback(
@@ -176,12 +185,15 @@ export function ReviewWorkspace({ onBack }: ReviewWorkspaceProps) {
             queue={queue}
             selectedDocumentId={currentDoc?.documentId || null}
             onSelectDocument={(doc) => {
-              const idx = queue.findIndex((d) => d.documentId === doc.documentId);
-              if (idx !== -1) setSelectedDocIndex(idx);
+              setSelectedDocId(doc.documentId);
               setActiveField(null);
             }}
             selectedFilter={filterType}
-            onFilterChange={setFilterType}
+            onFilterChange={(filter) => {
+              setFilterType(filter);
+              setSelectedDocId(null);
+              setActiveField(null);
+            }}
             onBulkConfirm={handleBulkConfirm}
             isBulkEnabled={isBulkEnabled}
           />
