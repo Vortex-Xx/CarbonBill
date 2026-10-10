@@ -35,6 +35,16 @@ export function ReviewWorkspace({ onBack }: ReviewWorkspaceProps) {
       ]);
       setQueue(items);
       setIsBulkEnabled(settings.autoConfirmEnabled || true);
+
+      // Select target docId from query params if specified
+      const params = new URLSearchParams(window.location.search);
+      const targetDocId = params.get('docId');
+      if (targetDocId && items.length > 0) {
+        const foundIdx = items.findIndex((d) => d.documentId.toLowerCase() === targetDocId.toLowerCase());
+        if (foundIdx !== -1) {
+          setSelectedDocIndex(foundIdx);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +191,9 @@ export function ReviewWorkspace({ onBack }: ReviewWorkspaceProps) {
         <div className="col-span-12 lg:col-span-5 h-full overflow-hidden">
           {currentDoc ? (
             <DocumentImageViewer
+              documentId={currentDoc.documentId}
               fileName={currentDoc.fileName}
+              contentType={currentDoc.contentType}
               activeField={activeField}
               fields={currentDoc.fields}
             />

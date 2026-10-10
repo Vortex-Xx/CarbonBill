@@ -24,9 +24,11 @@ export function ReviewQueueSidebar({
 }: ReviewQueueSidebarProps) {
   const filters = [
     { key: '', label: 'সবগুলো' },
+    { key: 'GasBill', label: 'গ্যাস' },
     { key: 'ElectricityBill', label: 'বিদ্যুৎ' },
     { key: 'DieselSlip', label: 'ডিজেল' },
-    { key: 'GasBill', label: 'গ্যাস' },
+    { key: 'ShippingChallan', label: 'চালান' },
+    { key: 'GeneralDocument', label: 'অন্যান্য' },
   ];
 
   return (
@@ -97,7 +99,17 @@ export function ReviewQueueSidebar({
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>{item.docType || 'ডকুমেন্ট'}</span>
+                  <span className="font-medium text-slate-700">
+                    {item.docType === 'GasBill'
+                      ? 'গ্যাস বিল'
+                      : item.docType === 'ElectricityBill'
+                      ? 'বিদ্যুৎ বিল'
+                      : item.docType === 'DieselSlip'
+                      ? 'ডিজেল মেমো'
+                      : item.docType === 'ShippingChallan'
+                      ? 'পরিবহন চালান'
+                      : 'সাধারণ চালান'}
+                  </span>
                   <span>{formatBanglaDate(item.capturedAtUtc)}</span>
                 </div>
               </div>

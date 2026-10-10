@@ -28,7 +28,10 @@ public class DocumentExtractedHandler(
             document.TierUsed = domainEvent.TierUsed;
             if (!string.IsNullOrWhiteSpace(domainEvent.DetectedDocType))
             {
-                document.DocType = domainEvent.DetectedDocType;
+                if (domainEvent.DetectedDocType != "GeneralDocument" || string.IsNullOrWhiteSpace(document.DocType))
+                {
+                    document.DocType = domainEvent.DetectedDocType;
+                }
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);

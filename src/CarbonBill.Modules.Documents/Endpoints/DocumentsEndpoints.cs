@@ -51,6 +51,20 @@ public static class DocumentsEndpoints
                 source = "phone";
             }
 
+            var docType = form["docType"].ToString();
+            var category = form["category"].ToString();
+            if (string.IsNullOrWhiteSpace(docType) && !string.IsNullOrWhiteSpace(category))
+            {
+                docType = category.ToLowerInvariant() switch
+                {
+                    "gas" => "GasBill",
+                    "electricity" => "ElectricityBill",
+                    "diesel" => "DieselSlip",
+                    "shipment" => "ShippingChallan",
+                    _ => null
+                };
+            }
+
             await using var stream = file.OpenReadStream();
             var result = await documentService.UploadDocumentAsync(
                 stream,
@@ -59,6 +73,7 @@ public static class DocumentsEndpoints
                 userId,
                 idempotencyKey,
                 source,
+                docType,
                 ct);
 
             if (!result.IsSuccess)
@@ -98,7 +113,25 @@ public static class DocumentsEndpoints
         {
             var items = await documentService.GetDocumentsAsync(status, limit ?? 20, ct);
             return Results.Ok(new { items, count = items.Count });
-        });
+        })
+        .AllowAnonymous();
+
+        // GET /api/v1/documents/{id:guid}/file (Serve Document Image / PDF)
+        group.MapGet("/{id:guid}/file", async (
+            Guid id,
+            IDocumentService documentService,
+            CancellationToken ct) =>
+        {
+            var result = await documentService.GetDocumentFileAsync(id, ct);
+            if (!result.IsSuccess)
+            {
+                return Results.NotFound(new { error = result.Error });
+            }
+
+            var (fileStream, contentType, fileName) = result.Value;
+            return Results.File(fileStream, contentType, fileName, enableRangeProcessing: true);
+        })
+        .AllowAnonymous();
 
         // GET /api/v1/documents/{id}
         group.MapGet("/{id:guid}", async (
@@ -116,7 +149,8 @@ public static class DocumentsEndpoints
             }
 
             return Results.Ok(result.Value);
-        });
+        })
+        .AllowAnonymous();
 
         // POST /api/v1/documents/manual-entry
         group.MapPost("/manual-entry", async (

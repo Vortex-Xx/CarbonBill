@@ -322,7 +322,7 @@ export function CaptureScreen({ onBack }: { onBack?: () => void } = {}) {
             </p>
             <div className="mt-2.5 flex items-center gap-2">
               <a
-                href="/?mode=review"
+                href={`/?mode=review&docId=${confirmedReceipt.id}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-sm transition"
               >
                 📋 পর্যালোচনা কিউ-তে বিলটি দেখুন (View Extracted Bill ➔)

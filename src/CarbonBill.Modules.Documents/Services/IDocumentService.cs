@@ -49,6 +49,7 @@ public interface IDocumentService
         Guid uploadedByUserId,
         string? idempotencyKey = null,
         string source = "phone",
+        string? docType = null,
         CancellationToken ct = default);
 
     Task<Result<DocumentReceiptDto>> CreateManualEntryAsync(
@@ -62,6 +63,10 @@ public interface IDocumentService
         CancellationToken ct = default);
 
     Task<Result<DocumentDetailDto>> GetDocumentByIdAsync(
+        Guid documentId,
+        CancellationToken ct = default);
+
+    Task<Result<(Stream Stream, string ContentType, string FileName)>> GetDocumentFileAsync(
         Guid documentId,
         CancellationToken ct = default);
 

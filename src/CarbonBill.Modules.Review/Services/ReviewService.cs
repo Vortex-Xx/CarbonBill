@@ -92,7 +92,14 @@ public class ReviewService(
 
         if (!string.IsNullOrWhiteSpace(docType))
         {
-            query = query.Where(d => d.DocType == docType);
+            if (docType.Equals("GeneralDocument", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(d => d.DocType == "GeneralDocument" || string.IsNullOrEmpty(d.DocType));
+            }
+            else
+            {
+                query = query.Where(d => d.DocType == docType);
+            }
         }
 
         var candidateDocs = await query.Take(limit * 2).ToListAsync(ct);

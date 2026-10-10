@@ -89,6 +89,16 @@ public class FakeGeminiVisionOcrProvider(ILogger<FakeGeminiVisionOcrProvider> lo
 public class LocalOrR2FileStoreStub(ILogger<LocalOrR2FileStoreStub> logger) : IFileStore
 {
     private readonly Dictionary<string, byte[]> _memoryStorage = new(StringComparer.OrdinalIgnoreCase);
+    private readonly string _storageDir = Path.Combine(AppContext.BaseDirectory, "filestore");
+
+    private string GetFullPath(string storagePath)
+    {
+        var sanitized = storagePath
+            .Replace('/', Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar)
+            .TrimStart(Path.DirectorySeparatorChar);
+        return Path.Combine(_storageDir, sanitized);
+    }
 
     public async Task<string> UploadAsync(
         Stream contentStream,
@@ -102,6 +112,21 @@ public class LocalOrR2FileStoreStub(ILogger<LocalOrR2FileStoreStub> logger) : IF
         var bytes = ms.ToArray();
         _memoryStorage[destinationPath] = bytes;
 
+        try
+        {
+            var fullPath = GetFullPath(destinationPath);
+            var dir = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            await File.WriteAllBytesAsync(fullPath, bytes, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not persist file to disk storage: {Path}", destinationPath);
+        }
+
         logger.LogInformation("Stored file at {DestinationPath} ({BytesCount} bytes, {ContentType})", destinationPath, bytes.Length, contentType);
         return destinationPath;
     }
@@ -113,24 +138,50 @@ public class LocalOrR2FileStoreStub(ILogger<LocalOrR2FileStoreStub> logger) : IF
             return Task.FromResult<Stream>(new MemoryStream(bytes));
         }
 
+        var fullPath = GetFullPath(storagePath);
+        if (File.Exists(fullPath))
+        {
+            try
+            {
+                var diskBytes = File.ReadAllBytes(fullPath);
+                _memoryStorage[storagePath] = diskBytes;
+                return Task.FromResult<Stream>(new MemoryStream(diskBytes));
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to read file from disk: {Path}", fullPath);
+            }
+        }
+
         throw new FileNotFoundException($"File not found in storage: {storagePath}");
     }
 
     public Task<bool> DeleteAsync(string storagePath, CancellationToken cancellationToken = default)
     {
         var removed = _memoryStorage.Remove(storagePath);
+        var fullPath = GetFullPath(storagePath);
+        if (File.Exists(fullPath))
+        {
+            try
+            {
+                File.Delete(fullPath);
+                removed = true;
+            }
+            catch { }
+        }
         return Task.FromResult(removed);
     }
 
     public Task<string> GetPreSignedUrlAsync(string storagePath, TimeSpan expiry, CancellationToken cancellationToken = default)
     {
-        // Return dummy pre-signed URL for local/stub testing
         return Task.FromResult($"/api/v1/documents/download?path={Uri.EscapeDataString(storagePath)}&expires={DateTime.UtcNow.Add(expiry):O}");
     }
 
     public Task<bool> ExistsAsync(string storagePath, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(_memoryStorage.ContainsKey(storagePath));
+        if (_memoryStorage.ContainsKey(storagePath)) return Task.FromResult(true);
+        var fullPath = GetFullPath(storagePath);
+        return Task.FromResult(File.Exists(fullPath));
     }
 }
 

@@ -130,6 +130,7 @@ export async function processQueueUploads(
         formData.append('file', item.blob, item.fileName || 'capture.webp');
         formData.append('source', 'phone');
         formData.append('category', item.category);
+        formData.append('docType', mapCategoryToDocType(item.category));
 
         response = await fetch(apiBaseUrl, {
           method: 'POST',
