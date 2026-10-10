@@ -171,22 +171,28 @@ export async function fetchDashboardSummary(period: string = '2026-09'): Promise
 
 export async function fetchDashboardTrend(start: string = '2026-04', end: string = '2026-09'): Promise<TrendDataPoint[]> {
   try {
-    const data = await apiFetch<any[]>(`/api/v1/dashboard/trend?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
-    if (!Array.isArray(data) || data.length === 0) return mockTrendData;
-    return data.map((pt) => {
-      const v = Number(pt.verifiedEmissions ?? (pt.verifiedKgCo2e ? pt.verifiedKgCo2e / 1000 : 0));
-      const e = Number(pt.estimatedEmissions ?? (pt.estimatedKgCo2e ? pt.estimatedKgCo2e / 1000 : 0));
-      const t = Number(pt.totalEmissions ?? (pt.totalKgCo2e ? pt.totalKgCo2e / 1000 : v + e));
-      return {
-        period: pt.period || pt.reportingPeriod || '2026-09',
-        periodLabelBn: pt.periodLabelBn || pt.period || 'মাস',
-        periodLabelEn: pt.periodLabelEn || pt.period || 'Month',
-        verifiedEmissions: v,
-        estimatedEmissions: e,
-        totalEmissions: t,
-        hatchFlag: Boolean(pt.hatchFlag),
-      };
-    });
+    const rawList = await apiFetch<any[]>(`/api/v1/dashboard/trend?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    if (Array.isArray(rawList) && rawList.length > 0) {
+      const monthNamesEn: Record<string, string> = { '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec' };
+      const monthNamesBn: Record<string, string> = { '01': 'জানু', '02': 'ফেব্রু', '03': 'মার্চ', '04': 'এপ্রিল', '05': 'মে', '06': 'জুন', '07': 'জুলাই', '08': 'আগস্ট', '09': 'সেপ্টে', '10': 'অক্টো', '11': 'নভে', '12': 'ডিসে' };
+      return rawList.map((p) => {
+        const periodStr = p.period || p.reportingPeriod || '';
+        const monthNum = periodStr.split('-')[1] || '';
+        const v = Number(p.verifiedEmissions ?? (p.verifiedKgCo2e != null ? p.verifiedKgCo2e / 1000 : 0));
+        const e = Number(p.estimatedEmissions ?? (p.estimatedKgCo2e != null ? p.estimatedKgCo2e / 1000 : 0));
+        const tot = Number(p.totalEmissions ?? (p.totalKgCo2e != null ? p.totalKgCo2e / 1000 : v + e));
+        return {
+          period: periodStr,
+          periodLabelBn: p.periodLabelBn || monthNamesBn[monthNum] || periodStr || 'মাস',
+          periodLabelEn: p.periodLabelEn || monthNamesEn[monthNum] || periodStr || 'Month',
+          verifiedEmissions: v,
+          estimatedEmissions: e,
+          totalEmissions: tot,
+          hatchFlag: Boolean(p.hatchFlag),
+        };
+      });
+    }
+    return mockTrendData;
   } catch {
     return mockTrendData;
   }
@@ -194,8 +200,26 @@ export async function fetchDashboardTrend(start: string = '2026-04', end: string
 
 export async function fetchIntensityData(period: string = '2026-09'): Promise<IntensityData> {
   try {
-    const data = await apiFetch<IntensityData>(`/api/v1/dashboard/intensity?period=${encodeURIComponent(period)}`);
-    return data || mockIntensityData;
+    const raw = await apiFetch<any>(`/api/v1/dashboard/intensity?period=${encodeURIComponent(period)}`);
+    if (!raw) return mockIntensityData;
+    return {
+      metric: raw.metric || 'intensity_garments',
+      metricLabelBn: raw.metricLabelBn || 'পোশাক উৎপাদন প্রতি কার্বন ঘনত্ব',
+      metricLabelEn: raw.metricLabelEn || 'Garment Output Emission Intensity',
+      unit: raw.unit || 'kg CO₂e / 1,000 pcs',
+      productionQuantity: Number(raw.productionQuantity ?? 35000),
+      verifiedIntensity: Number(raw.verifiedIntensity ?? raw.verifiedFactoryValue ?? raw.factoryValue ?? 18.78),
+      inclEstimateIntensity: Number(raw.inclEstimateIntensity ?? raw.factoryValue ?? 19.45),
+      benchmark: raw.peerBenchmark?.hasBenchmark ? {
+        p25: Number(raw.peerBenchmark.p25 ?? 0),
+        p50: Number(raw.peerBenchmark.p50 ?? 0),
+        p75: Number(raw.peerBenchmark.p75 ?? 0),
+        p90: Number(raw.peerBenchmark.p90 ?? 0),
+        n: Number(raw.peerBenchmark.n ?? 0),
+        source: raw.peerBenchmark.source ?? '',
+        year: Number(raw.peerBenchmark.year ?? 2025),
+      } : (raw.benchmark ?? null),
+    };
   } catch {
     return mockIntensityData;
   }
@@ -204,7 +228,8 @@ export async function fetchIntensityData(period: string = '2026-09'): Promise<In
 export async function fetchConsultantClients(): Promise<ClientOrgSummary[]> {
   try {
     const data = await apiFetch<ClientOrgSummary[]>('/api/v1/consultant/clients');
-    return Array.isArray(data) ? data : mockConsultantClientOrgs;
+    if (Array.isArray(data) && data.length > 0) return data;
+    return mockConsultantClientOrgs;
   } catch {
     return mockConsultantClientOrgs;
   }

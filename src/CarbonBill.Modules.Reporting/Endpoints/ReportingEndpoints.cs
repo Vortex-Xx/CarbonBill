@@ -293,6 +293,33 @@ public static class ReportingEndpoints
         .WithName("GetDashboardTrend")
         .WithSummary("Monthly emissions trend with verified vs estimated split and hatched styling flag.");
 
+        // 11. Consultant Clients: GET /api/v1/consultant/clients
+        group.MapGet("/consultant/clients", async (
+            ITenantContext tenantContext,
+            ReportingService service,
+            CancellationToken ct) =>
+        {
+            if (!tenantContext.IsAuthenticated)
+            {
+                return Results.Unauthorized();
+            }
+
+            var clients = await service.GetConsultantClientsAsync(ct);
+            return Results.Ok(clients);
+        })
+        .WithName("GetConsultantClients")
+        .WithSummary("Portfolio overview of client organizations for sustainability consultants.");
+
+        // 12. OpenTelemetry Business Metrics: GET /api/v1/metrics/business
+        group.MapGet("/metrics/business", () =>
+        {
+            var snapshot = CarbonBill.Modules.Reporting.Observability.CarbonBillMetrics.GetCurrentSnapshot();
+            return Results.Ok(snapshot);
+        })
+        .WithName("GetBusinessMetrics")
+        .WithSummary("OpenTelemetry business metrics snapshot for Prometheus/Grafana Cloud monitoring.")
+        .AllowAnonymous();
+
         return endpoints;
     }
 }

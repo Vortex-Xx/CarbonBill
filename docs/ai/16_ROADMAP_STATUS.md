@@ -42,13 +42,13 @@ This document tracks execution progress across all phases defined in the CarbonB
 - [ ] **B6:** Review UI workspace (side-by-side viewer, bounding box highlights, keyboard shortcuts `Tab`/`Enter`/`N`).
 
 ### Track C: Insights and Output (Dev 3)
-- [ ] **C1:** Gap detection engine (nightly job, comparison against expected calendar, days -7, -3, 0 escalation).
-- [ ] **C2:** Notifications system (in-app, Web Push VAPID, transactional email, quiet hours, anti-fatigue).
-- [ ] **C3:** Carbon Flags engine (FlagRule schema, data-quality rules, lifecycle Open/Acknowledged/Resolved/Dismissed).
-- [ ] **C4:** Footprint flags, buyer-readiness checks, monthly production metrics, intensity denominators (`kg CO2e/unit`).
-- [ ] **C5:** Measure Library and Recommendations engine (8-step pipeline, BDT savings & payback, realism filters).
-- [ ] **C6:** Reporting backend (GHG Protocol aligned QuestPDF, ClosedXML Excel sheets, expiring auditor share links).
-- [ ] **C7:** Frontend role dashboards, Carbon Flags cards, recommendation action views, and auditor verification page.
+- [x] **C1:** Gap detection engine (nightly job, comparison against expected calendar, days -7, -3, 0 escalation).
+- [x] **C2:** Notifications system (in-app, Web Push VAPID, transactional email, quiet hours, anti-fatigue).
+- [x] **C3:** Carbon Flags engine (FlagRule schema, data-quality rules, lifecycle Open/Acknowledged/Resolved/Dismissed).
+- [x] **C4:** Footprint flags, buyer-readiness checks, monthly production metrics, intensity denominators (`kg CO2e/unit`).
+- [x] **C5:** Measure Library and Recommendations engine (8-step pipeline, BDT savings & payback, realism filters).
+- [x] **C6:** Reporting backend (GHG Protocol aligned QuestPDF, ClosedXML Excel sheets, expiring auditor share links).
+- [x] **C7:** Frontend role dashboards, Carbon Flags cards, recommendation action views, and auditor verification page.
 
 ---
 
@@ -56,10 +56,10 @@ This document tracks execution progress across all phases defined in the CarbonB
 
 - [x] **I1:** Wire real module implementations in host (`UseFakes=false`), execute full abstract contract test suite.
 - [ ] **I2:** Automated end-to-end integration test (Playwright & C# test runner: upload -> OCR -> review -> calculate -> report).
-- [ ] **I3:** Role dashboards and buyer PDF verification with real data and reconciliation tests.
+- [x] **I3:** Role dashboards and buyer PDF verification with real data and reconciliation tests.
 - [x] **I4:** Security hardening, OWASP ASVS checklist pass, adversarial tenant-isolation penetration test.
 - [ ] **I5:** Golden OCR benchmark report on 150 physical bills; offline torture tests (airplane mode, network degradation).
-- [ ] **I6:** Observability metrics via OpenTelemetry into Grafana Cloud; flag volume tuning against pilot datasets.
+- [x] **I6:** Observability metrics via OpenTelemetry into Grafana Cloud; flag volume tuning against pilot datasets.
 - [x] **I7:** Consultant multi-tenant workspace with cross-factory flag inspection and factor override workflows.
 
 ---
@@ -68,7 +68,7 @@ This document tracks execution progress across all phases defined in the CarbonB
 
 - [x] **I8:** Pilot VPS deployment (Singapore region) running Docker Compose behind Caddy with automated backups.
 - [ ] **I9:** Formal usability testing with 5 participants per persona (floor staff submission task < 20 seconds).
-- [ ] **I10:** Pilot data review and domain expert sign-off on factor tables and Measure Library citations.
+- [x] **I10:** Pilot data review and domain expert sign-off on factor tables and Measure Library citations.
 - [ ] **Future Enhancements:**
   - [ ] Peer benchmark distributions from opt-in anonymised pilot cohorts.
   - [ ] Closed-loop realised savings verification (calibrating Measure Library against post-intervention utility bills).

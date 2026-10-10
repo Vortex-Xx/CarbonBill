@@ -13,15 +13,15 @@
 | **C5** | Measure Library & recommendations engine | done | `feat/c-c5-recommendations-engine` | Measure & MeasureSource entities, versioned dataset loader with strict source validation & range ordering, 8-step pipeline (profile, eligibility, impact, financial BDT & negative cost/t, realism & audit filter, ranking composite, bilingual explanation cards, closed-loop status update & bill delta), GET /recommendations, PUT /recommendations/{id}/status, POST /profile/facility |
 | **C6** | Reporting backend (PDF, Excel, Auditor link) | done | `feat/c-c6-reporting-backend` | QuestPDF bilingual GHG report (en/bn), ClosedXML multi-sheet export, SHA-256 ReportSnapshot hash & immutability, expiring share links, price redaction masking, click-to-source auditor trace, dashboard summary and trend endpoints |
 | **C7** | Frontend (dashboard, flags, recommendations, reports, auditor) | done | `feat/c-c7-frontend` | Role dashboards (Owner, Accountant, Compliance, Consultant), Chart.js trend with hatched estimated segments, Scope breakdown, intensity vs benchmark with honest n<10 gating, Carbon Flags feed with snooze/dismiss modals, Measure Library cards with Low/Typical/High ranges in BDT, MACC chart, reports readiness checklist, sign-off approval, share link modal with price redaction, auditor read-only portal with click-to-source traceability |
-| **I3** | Role dashboards & buyer PDF on real data | todo | - | Real data reconciliation and golden PDF verification |
-| **I6** | Observability & flag tuning | todo | - | OpenTelemetry business metrics and pilot threshold tuning guide |
-| **I10**| Pilot data & expert review | todo | - | Dataset validation checklist and expert sign-off register |
+| **I3** | Role dashboards & buyer PDF on real data | done | `feat/c-phase2-phase3-integration` | Real data reconciliation and golden PDF verification with seeds/dev dataset, auditor trace fix, bilingual QuestPDF & ClosedXML tests |
+| **I6** | Observability & flag tuning | done | `feat/c-phase2-phase3-integration` | OpenTelemetry business metrics (System.Diagnostics.Metrics), GET /api/v1/metrics/business endpoint, Grafana Cloud dashboard JSON, Sentry wiring and docs/ai/flag-tuning.md |
+| **I10**| Pilot data & expert review | done | `feat/c-phase2-phase3-integration` | Complete expert review pack, source register, n>=10 benchmark gating, and pilot interview validation plan in docs/ai/expert-review-pack.md |
 
 ---
 
-**Blocked on:** None. All Track C Phase 1 deliverables (C1–C7) complete.
+**Blocked on:** None. All Track C deliverables across Phase 0, Phase 1, Phase 2, and Phase 3 (P0-1c, P0-4, C1–C7, I3, I6, I10) are COMPLETE!
 
-**Next prompt:** I3 (Role dashboards & buyer PDF on real data — Phase 2 Integration).
+**Next prompt:** Phase 2/3 Integration & Gate G4 sign-off with other tracks.
 
 **Open questions logged in 15_DECISIONS.md:**
 - QuestPDF Bangla font glyph rendering spike validated under ADR-005.

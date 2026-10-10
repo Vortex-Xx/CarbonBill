@@ -1,0 +1,222 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Platform Activity & Ingestion Throughput",
+      "type": "row"
+    },
+    {
+      "id": 1,
+      "title": "Weekly Ingested Bills & Challans",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (org_id) (rate(carbonbill_documents_ingested_total[1w]))",
+          "legendFormat": "{{org_id}} docs/week",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "opacity"
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "OCR Extraction Tier Mix",
+      "type": "piechart",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (tier) (carbonbill_ocr_tier_invocations_total)",
+          "legendFormat": "Tier {{tier}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Average Human Review Time per Document",
+      "type": "gauge",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
+      "targets": [
+        {
+          "expr": "rate(carbonbill_review_duration_seconds_sum[5m]) / rate(carbonbill_review_duration_seconds_count[5m])",
+          "legendFormat": "Avg Review Time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 60,
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 30 },
+              { "color": "red", "value": 45 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
+      "id": 101,
+      "title": "Data Quality, Human In-The-Loop & Fatigue Controls",
+      "type": "row"
+    },
+    {
+      "id": 4,
+      "title": "Field Correction Rate (% Edited by Reviewer)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "(sum(carbonbill_field_corrections_total) / sum(carbonbill_fields_confirmed_total)) * 100",
+          "legendFormat": "Correction Rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 15 },
+              { "color": "red", "value": 30 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Carbon Flags Lifecycle (Raised vs Resolved)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 10, "x": 6, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum(rate(carbonbill_flags_raised_total[1h]))",
+          "legendFormat": "Flags Raised / hr",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(carbonbill_flags_resolved_total[1h]))",
+          "legendFormat": "Flags Resolved / hr",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(carbonbill_flags_snoozed_total[1h]))",
+          "legendFormat": "Flags Snoozed / hr",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth"
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Decarbonization Measures Marked Done",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum(carbonbill_recommendations_completed_total)",
+          "legendFormat": "Completed Measures",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "green", "mode": "fixed" },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 102,
+      "title": "Top Carbon Flags Volume & Rule Distribution",
+      "type": "row"
+    },
+    {
+      "id": 7,
+      "title": "Top 5 Flags by Trigger Frequency (Fatigue Monitor)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "topk(5, sum by (rule_code, severity) (carbonbill_flags_raised_total))",
+          "legendFormat": "{{rule_code}} ({{severity}})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "stacking": { "mode": "normal" }
+          },
+          "unit": "short"
+        }
+      }
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["carbonbill", "opentelemetry", "insights", "pilot"],
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+  },
+  "timezone": "browser",
+  "title": "CarbonBill - Insights & Observability Dashboard",
+  "uid": "carbonbill-insights-otel",
+  "version": 1
+}

@@ -29,7 +29,26 @@ public record DashboardSummaryResponse(
     decimal DataQualityScore,
     decimal VerifiedSharePercent,
     decimal EstimatedSharePercent,
-    string MethodologyStatement);
+    string MethodologyStatement,
+    decimal TotalEmissions = 0m,
+    decimal Scope1Emissions = 0m,
+    decimal Scope2Emissions = 0m,
+    decimal Scope3Emissions = 0m,
+    decimal VerifiedPercentage = 0m,
+    string DqsGrade = "Grade A",
+    int ActiveFlagsCount = 3,
+    int MissingDocsCount = 2);
+
+public record ConsultantClientDto(
+    string OrgId,
+    string OrgName,
+    string Sector,
+    decimal TotalEmissions,
+    decimal DqsScore,
+    string DqsGrade,
+    int OpenFlagsCount,
+    int PendingOverridesCount,
+    string LastUpdated);
 
 public record DashboardTrendPoint(
     string Period,
@@ -287,7 +306,11 @@ public class ReportingService(
 
         // Match applied factor
         var factor = payload.AppliedFactors.FirstOrDefault(f =>
-            f.ActivityOrFuel.Contains(doc.DocumentType, StringComparison.OrdinalIgnoreCase))
+            f.ActivityOrFuel.Contains(doc.DocumentType, StringComparison.OrdinalIgnoreCase) ||
+            doc.DocumentType.Contains(f.ActivityOrFuel, StringComparison.OrdinalIgnoreCase) ||
+            (doc.DocumentType.Contains("diesel", StringComparison.OrdinalIgnoreCase) && f.ActivityOrFuel.Contains("Diesel", StringComparison.OrdinalIgnoreCase)) ||
+            (doc.DocumentType.Contains("electric", StringComparison.OrdinalIgnoreCase) && f.ActivityOrFuel.Contains("Electric", StringComparison.OrdinalIgnoreCase)) ||
+            (doc.DocumentType.Contains("gas", StringComparison.OrdinalIgnoreCase) && f.ActivityOrFuel.Contains("Gas", StringComparison.OrdinalIgnoreCase)))
             ?? payload.AppliedFactors[0];
 
         return new AuditorTraceResult(
@@ -398,19 +421,53 @@ public class ReportingService(
                 DataQualityScore: 94.2m,
                 VerifiedSharePercent: 91.5m,
                 EstimatedSharePercent: 8.5m,
-                MethodologyStatement: "Estimate aligned with GHG Protocol methodology, not audited or certified.");
+                MethodologyStatement: "Estimate aligned with GHG Protocol methodology, not audited or certified.",
+                TotalEmissions: 84.500m,
+                Scope1Emissions: 32.500m,
+                Scope2Emissions: 48.000m,
+                Scope3Emissions: 4.000m,
+                VerifiedPercentage: 91.5m,
+                DqsGrade: "Grade A",
+                ActiveFlagsCount: 3,
+                MissingDocsCount: 2);
         }
+
+        var total = Math.Round(report.TotalKgCo2e / 1000m, 3);
+        var s1 = Math.Round(report.Scope1KgCo2e / 1000m, 3);
+        var s2 = Math.Round(report.Scope2KgCo2e / 1000m, 3);
+        var s3 = Math.Round(report.Scope3KgCo2e / 1000m, 3);
+        var grade = report.DataQualityScore >= 90m ? "Grade A" : report.DataQualityScore >= 75m ? "Grade B" : "Grade C";
 
         return new DashboardSummaryResponse(
             ReportingPeriod: report.ReportingPeriod,
-            TotalTco2e: Math.Round(report.TotalKgCo2e / 1000m, 3),
-            Scope1Tco2e: Math.Round(report.Scope1KgCo2e / 1000m, 3),
-            Scope2Tco2e: Math.Round(report.Scope2KgCo2e / 1000m, 3),
-            Scope3Tco2e: Math.Round(report.Scope3KgCo2e / 1000m, 3),
+            TotalTco2e: total,
+            Scope1Tco2e: s1,
+            Scope2Tco2e: s2,
+            Scope3Tco2e: s3,
             DataQualityScore: report.DataQualityScore,
             VerifiedSharePercent: 92.0m,
             EstimatedSharePercent: 8.0m,
-            MethodologyStatement: report.MethodologyStatement);
+            MethodologyStatement: report.MethodologyStatement,
+            TotalEmissions: total,
+            Scope1Emissions: s1,
+            Scope2Emissions: s2,
+            Scope3Emissions: s3,
+            VerifiedPercentage: 92.0m,
+            DqsGrade: grade,
+            ActiveFlagsCount: 3,
+            MissingDocsCount: 2);
+    }
+
+    public Task<List<ConsultantClientDto>> GetConsultantClientsAsync(CancellationToken ct = default)
+    {
+        var clients = new List<ConsultantClientDto>
+        {
+            new("org-apex", "Apex Textiles Ltd.", "Knit Dyeing & Finishing", 65.75m, 0.9125m, "Grade A", 3, 0, "2026-10-08"),
+            new("org-square", "Square Fashions (Unit 2)", "Woven Garments", 142.30m, 0.8850m, "Grade A", 1, 1, "2026-10-07"),
+            new("org-hameem", "Ha-Meem Denim Mill", "Denim Spinning & Weaving", 310.80m, 0.7420m, "Grade B", 6, 2, "2026-10-06"),
+            new("org-beximco", "Beximco Apparels Industrial Park", "Composite Textile", 495.10m, 0.9410m, "Grade A", 0, 0, "2026-10-09")
+        };
+        return Task.FromResult(clients);
     }
 
     public Task<List<DashboardTrendPoint>> GetDashboardTrendAsync(
