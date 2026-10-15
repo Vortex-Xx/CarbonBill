@@ -33,6 +33,7 @@ public static class ActivityUnitsModuleExtensions
     public static IEndpointRouteBuilder MapActivityUnitsModuleEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapActivityUnitsEndpoints();
+        endpoints.MapUtilityConnectorsEndpoints();
         return endpoints;
     }
 }

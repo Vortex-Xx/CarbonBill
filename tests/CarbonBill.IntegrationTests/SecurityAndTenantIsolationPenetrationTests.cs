@@ -402,6 +402,53 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         Assert.False(floorPrincipal.IsInRole(Roles.PlatformAdmin));
     }
 
+    [Fact]
+    public async Task KioskPinLock_Set_Lock_And_Unlock_Lifecycle()
+    {
+        var orgA = Guid.NewGuid();
+        var userA = Guid.NewGuid();
+        var passwordHasher = new PasswordHasher();
+
+        _tenantContext.SetContext(orgA, userA, Roles.FloorStaff);
+        using var identityDb = new IdentityTenancyDbContext(_identityDbOptions, _tenantContext);
+
+        var floorUser = new User
+        {
+            Id = userA,
+            Email = "jahid.kiosk@apex.local",
+            FullName = "Jahid Hasan",
+            PasswordHash = passwordHasher.HashPassword("Pass1234!"),
+            PreferredLanguage = "bn",
+            IsActive = true
+        };
+        identityDb.Users.Add(floorUser);
+        await identityDb.SaveChangesAsync();
+
+        // 1. Set Kiosk 4-digit PIN
+        floorUser.PinLockHash = passwordHasher.HashPassword("1234");
+        await identityDb.SaveChangesAsync();
+        Assert.NotNull(floorUser.PinLockHash);
+
+        // 2. Lock Kiosk
+        floorUser.IsLocked = true;
+        await identityDb.SaveChangesAsync();
+        Assert.True(floorUser.IsLocked);
+
+        // 3. Attempt unlock with wrong PIN fails
+        var wrongPinValid = passwordHasher.VerifyPassword("9999", floorUser.PinLockHash);
+        Assert.False(wrongPinValid);
+
+        // 4. Unlock with correct PIN succeeds
+        var correctPinValid = passwordHasher.VerifyPassword("1234", floorUser.PinLockHash);
+        Assert.True(correctPinValid);
+        floorUser.IsLocked = false;
+        await identityDb.SaveChangesAsync();
+
+        var reloaded = await identityDb.Users.FindAsync(userA);
+        Assert.NotNull(reloaded);
+        Assert.False(reloaded.IsLocked);
+    }
+
     public void Dispose()
     {
         _connection.Dispose();

@@ -46,9 +46,9 @@ From the usability sessions, the following prioritized items were logged and ass
   * *Resolution*: Added optional `navigator.vibrate([100, 50, 100])` haptic buzz upon receipt code display.
 
 ### Track A (Dev 1 — Platform & Security Backbone)
-* **[SECURITY - P1] Single-Tap PIN Lock for Kiosk Terminals**:
+* **[RESOLVED - P1] Single-Tap PIN Lock for Kiosk Terminals**:
   * *Finding*: Shared Android tablets on factory gates should allow Jahid to lock the screen with a 4-digit PIN between shifts.
-  * *Assigned*: Track A Identity module (`/api/v1/auth/pin-lock`).
+  * *Resolution*: Delivered `/api/v1/auth/pin-lock/set`, `/lock`, and `/unlock` endpoints in `CarbonBill.Modules.IdentityTenancy`, supporting Kiosk PIN configuration, lock state preservation, and unlock verification with 4-digit PIN, paired with frontend Kiosk lock state in `web/src/features/auth/AuthScreen.tsx`.
 
 ### Track C (Dev 3 — Insights, Flags & Reporting)
 * **[ANALYTICS - P1] Power Factor Penalty Banner on Dashboard**:

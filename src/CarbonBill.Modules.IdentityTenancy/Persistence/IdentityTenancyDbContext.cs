@@ -41,6 +41,7 @@ public class IdentityTenancyDbContext(
             entity.Property(e => e.FullName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.PasswordHash).IsRequired();
             entity.Property(e => e.PreferredLanguage).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.PinLockHash).HasMaxLength(256);
             entity.HasIndex(e => e.Email).IsUnique();
         });
 

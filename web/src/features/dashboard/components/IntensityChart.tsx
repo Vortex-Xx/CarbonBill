@@ -10,7 +10,7 @@ interface IntensityChartProps {
 
 export const IntensityChart: React.FC<IntensityChartProps> = ({ data, isBangla }) => {
   const { benchmark, verifiedIntensity, inclEstimateIntensity, unit, productionQuantity } = data;
-  const hasBenchmark = benchmark !== null && benchmark.n >= 10;
+  const hasBenchmark = Boolean(benchmark && typeof benchmark.n === 'number' && benchmark.n >= 10);
 
   return (
     <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
@@ -70,7 +70,7 @@ export const IntensityChart: React.FC<IntensityChartProps> = ({ data, isBangla }
           {isBangla ? 'পোশাক খাতের তুলনামূলক বেঞ্চমার্ক (Peer Comparison)' : 'Industry Peer Benchmark Distribution'}
         </h4>
 
-        {hasBenchmark ? (
+        {hasBenchmark && benchmark ? (
           <div className="space-y-3 p-3.5 bg-teal-50/50 border border-teal-200/60 rounded-xl">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-600 font-medium">

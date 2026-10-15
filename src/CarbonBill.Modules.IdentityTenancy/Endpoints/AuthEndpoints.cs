@@ -29,6 +29,8 @@ public record RefreshTokenRequest(string? RefreshToken = null);
 public record CreateInviteApiRequest(Guid OrgId, string Role, string Pin, int ValidityDays = 7, int MaxUses = 1);
 public record CreateInviteApiResponse(string Token, string Role, DateTime ExpiresAtUtc, string QrPayload);
 public record SwitchOrgRequest(Guid TargetOrgId);
+public record SetPinLockRequest(string Pin);
+public record PinLockVerifyRequest(string Pin);
 
 public static class AuthEndpoints
 {
@@ -389,6 +391,118 @@ public static class AuthEndpoints
                 Memberships: membershipsDto);
 
             return Results.Ok(response);
+        });
+
+        // Kiosk PIN Lock Endpoints (Prompt I9 Usability / Phase 3 Follow-up)
+        group.MapPost("/pin-lock/set", async (
+            [FromBody] SetPinLockRequest request,
+            ITenantContext tenantContext,
+            IdentityTenancyDbContext dbContext,
+            IPasswordHasher passwordHasher,
+            CancellationToken ct) =>
+        {
+            if (!tenantContext.IsAuthenticated || !tenantContext.CurrentUserId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
+            var pin = request.Pin?.Trim() ?? string.Empty;
+            if (pin.Length != 4 || !pin.All(char.IsDigit))
+            {
+                return Results.Problem(
+                    detail: "PIN must be exactly 4 numeric digits.",
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid PIN");
+            }
+
+            var user = await dbContext.Users
+                .FirstOrDefaultAsync(u => u.Id == tenantContext.CurrentUserId.Value && u.IsActive, ct);
+
+            if (user == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            user.PinLockHash = passwordHasher.HashPassword(pin);
+            user.IsLocked = false;
+            await dbContext.SaveChangesAsync(ct);
+
+            return Results.Ok(new { message = "Kiosk PIN configured successfully.", hasPinLock = true });
+        });
+
+        group.MapPost("/pin-lock/lock", async (
+            ITenantContext tenantContext,
+            IdentityTenancyDbContext dbContext,
+            CancellationToken ct) =>
+        {
+            if (!tenantContext.IsAuthenticated || !tenantContext.CurrentUserId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
+            var user = await dbContext.Users
+                .FirstOrDefaultAsync(u => u.Id == tenantContext.CurrentUserId.Value && u.IsActive, ct);
+
+            if (user == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            user.IsLocked = true;
+            await dbContext.SaveChangesAsync(ct);
+
+            return Results.Ok(new { message = "Kiosk terminal locked.", isLocked = true });
+        });
+
+        group.MapPost("/pin-lock/unlock", async (
+            [FromBody] PinLockVerifyRequest request,
+            ITenantContext tenantContext,
+            IdentityTenancyDbContext dbContext,
+            IPasswordHasher passwordHasher,
+            CancellationToken ct) =>
+        {
+            if (!tenantContext.IsAuthenticated || !tenantContext.CurrentUserId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
+            var pin = request.Pin?.Trim() ?? string.Empty;
+            var user = await dbContext.Users
+                .FirstOrDefaultAsync(u => u.Id == tenantContext.CurrentUserId.Value && u.IsActive, ct);
+
+            if (user == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (string.IsNullOrEmpty(user.PinLockHash))
+            {
+                // If user doesn't have a PIN lock hash, check if it matches default floor PIN '1234'
+                if (pin == "1234")
+                {
+                    user.IsLocked = false;
+                    await dbContext.SaveChangesAsync(ct);
+                    return Results.Ok(new { message = "Kiosk unlocked with default PIN.", isLocked = false });
+                }
+
+                return Results.Problem(
+                    detail: "No PIN has been configured for this kiosk user. Set a PIN first.",
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "PIN Not Configured");
+            }
+
+            if (!passwordHasher.VerifyPassword(pin, user.PinLockHash))
+            {
+                return Results.Problem(
+                    detail: "Incorrect 4-digit PIN.",
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unlock Failed");
+            }
+
+            user.IsLocked = false;
+            await dbContext.SaveChangesAsync(ct);
+
+            return Results.Ok(new { message = "Kiosk unlocked successfully.", isLocked = false });
         });
 
         return endpoints;

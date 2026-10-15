@@ -65,7 +65,7 @@ public class ReviewService(
 
     private static readonly Guid DefaultPilotOrgId = Guid.Parse("f0ee71e0-717b-4b5e-af05-a443c6430a8f");
 
-    private async Task<Guid?> GetEffectiveOrgIdAsync(CancellationToken ct)
+    private async Task<Guid> GetEffectiveOrgIdAsync(CancellationToken ct)
     {
         if (tenantContext.CurrentOrgId.HasValue) return tenantContext.CurrentOrgId.Value;
         var existing = await documentsDb.Documents.Select(d => (Guid?)d.OrgId).FirstOrDefaultAsync(ct);
@@ -82,7 +82,7 @@ public class ReviewService(
 
         var query = documentsDb.Documents
             .AsNoTracking()
-            .Where(d => d.OrgId == orgId.Value &&
+            .Where(d => d.OrgId == orgId &&
                         (d.Status == DocumentStatuses.NeedsReview || d.Status == DocumentStatuses.Uploaded || d.Status == DocumentStatuses.Extracting));
 
         if (siteId.HasValue)
@@ -109,7 +109,7 @@ public class ReviewService(
         var runs = await extractionDb.ExtractionRuns
             .Include(r => r.Fields)
             .AsNoTracking()
-            .Where(r => r.OrgId == orgId.Value && docIds.Contains(r.DocumentId))
+            .Where(r => r.OrgId == orgId && docIds.Contains(r.DocumentId))
             .ToListAsync(ct);
 
         var runMap = runs.GroupBy(r => r.DocumentId).ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.ProcessedAtUtc).First());
@@ -160,7 +160,7 @@ public class ReviewService(
 
         var run = await extractionDb.ExtractionRuns
             .Include(r => r.Fields)
-            .FirstOrDefaultAsync(r => r.OrgId == orgId.Value && r.DocumentId == documentId, ct);
+            .FirstOrDefaultAsync(r => r.OrgId == orgId && r.DocumentId == documentId, ct);
 
         if (run == null)
         {
@@ -179,7 +179,7 @@ public class ReviewService(
                 run.Fields.Add(new ExtractedField
                 {
                     Id = Guid.NewGuid(),
-                    OrgId = orgId.Value,
+                    OrgId = orgId,
                     ExtractionRunId = run.Id,
                     DocumentId = documentId,
                     FieldName = kvp.Key,
@@ -195,7 +195,7 @@ public class ReviewService(
         await extractionDb.SaveChangesAsync(ct);
 
         await auditLogService.LogAsync(new AuditLogEntry(
-            OrgId: orgId.Value,
+            OrgId: orgId,
             Action: "FieldsCorrected",
             EntityType: "Document",
             EntityId: documentId.ToString(),
@@ -223,7 +223,7 @@ public class ReviewService(
         }
 
         // 2. Fetch Document
-        var document = await documentsDb.Documents.FirstOrDefaultAsync(d => d.OrgId == orgId.Value && d.Id == documentId, ct);
+        var document = await documentsDb.Documents.FirstOrDefaultAsync(d => d.OrgId == orgId && d.Id == documentId, ct);
         if (document == null)
         {
             return Result.Failure<Guid>($"Document {documentId} not found.");
@@ -237,12 +237,12 @@ public class ReviewService(
         // 3. Resolve duplicate if requested ("Keep one" duplicate resolution)
         if (request.ResolveDuplicateWithDocId.HasValue)
         {
-            var dupeDoc = await documentsDb.Documents.FirstOrDefaultAsync(d => d.OrgId == orgId.Value && d.Id == request.ResolveDuplicateWithDocId.Value, ct);
+            var dupeDoc = await documentsDb.Documents.FirstOrDefaultAsync(d => d.OrgId == orgId && d.Id == request.ResolveDuplicateWithDocId.Value, ct);
             if (dupeDoc != null)
             {
                 dupeDoc.MarkDuplicate();
                 await auditLogService.LogAsync(new AuditLogEntry(
-                    OrgId: orgId.Value,
+                    OrgId: orgId,
                     Action: "DuplicateResolved",
                     EntityType: "Document",
                     EntityId: dupeDoc.Id.ToString(),
@@ -255,7 +255,7 @@ public class ReviewService(
         var run = await extractionDb.ExtractionRuns
             .Include(r => r.Fields)
             .OrderByDescending(r => r.ProcessedAtUtc)
-            .FirstOrDefaultAsync(r => r.OrgId == orgId.Value && r.DocumentId == documentId, ct);
+            .FirstOrDefaultAsync(r => r.OrgId == orgId && r.DocumentId == documentId, ct);
 
         var fields = run?.Fields ?? [];
 
@@ -305,7 +305,7 @@ public class ReviewService(
 
         // 5. Transaction Semantic: Call IActivityWriter.RecordConfirmedActivity
         var activityRequest = new ConfirmedActivityRequest(
-            OrgId: orgId.Value,
+            OrgId: orgId,
             SiteId: document.SiteId,
             AssetId: document.AssetId,
             DocumentId: documentId,
@@ -333,7 +333,7 @@ public class ReviewService(
         var decision = new ReviewDecision
         {
             Id = Guid.NewGuid(),
-            OrgId = orgId.Value,
+            OrgId = orgId,
             DocumentId = documentId,
             ReviewerUserId = reviewerUserId,
             Mode = ReviewModes.Manual,
@@ -343,10 +343,10 @@ public class ReviewService(
         };
         reviewDb.Decisions.Add(decision);
 
-        var orgSetting = await reviewDb.OrganizationSettings.FirstOrDefaultAsync(s => s.OrgId == orgId.Value, ct);
+        var orgSetting = await reviewDb.OrganizationSettings.FirstOrDefaultAsync(s => s.OrgId == orgId, ct);
         if (orgSetting == null)
         {
-            orgSetting = new ReviewOrganizationSetting { Id = Guid.NewGuid(), OrgId = orgId.Value, ManualConfirmCount = 1 };
+            orgSetting = new ReviewOrganizationSetting { Id = Guid.NewGuid(), OrgId = orgId, ManualConfirmCount = 1 };
             reviewDb.OrganizationSettings.Add(orgSetting);
         }
         else
@@ -358,7 +358,7 @@ public class ReviewService(
 
         // 8. Audit Log
         await auditLogService.LogAsync(new AuditLogEntry(
-            OrgId: orgId.Value,
+            OrgId: orgId,
             Action: "DocumentConfirmed",
             EntityType: "Document",
             EntityId: documentId.ToString(),
@@ -415,13 +415,13 @@ public class ReviewService(
     {
         var orgId = await GetEffectiveOrgIdAsync(ct);
 
-        var setting = await reviewDb.OrganizationSettings.FirstOrDefaultAsync(s => s.OrgId == orgId.Value, ct);
+        var setting = await reviewDb.OrganizationSettings.FirstOrDefaultAsync(s => s.OrgId == orgId, ct);
         if (setting == null)
         {
             setting = new ReviewOrganizationSetting
             {
                 Id = Guid.NewGuid(),
-                OrgId = orgId.Value,
+                OrgId = orgId,
                 AutoConfirmEnabled = autoConfirmEnabled ?? false,
                 AutoConfirmThreshold = threshold ?? 0.95f,
                 SamplingRate = samplingRate ?? 0.10f,

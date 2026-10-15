@@ -449,6 +449,68 @@ public class AbstractContractsIntegrationTests : IDisposable
         Assert.Equal("Open", flags[0].State);
     }
 
+    [Fact]
+    public async Task DirectUtilityConnector_IngestDESCO_And_TitasGas_DigitalBills()
+    {
+        var sp = BuildServiceProvider(useFakes: false);
+        InitializeDatabaseTables(sp, _connection);
+
+        var orgId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        using var scope = sp.CreateScope();
+        var tenantContext = scope.ServiceProvider.GetRequiredService<ITenantContext>();
+        tenantContext.SetContext(orgId, userId, "Owner");
+
+        var activityWriter = scope.ServiceProvider.GetRequiredService<IActivityWriter>();
+        var activityDb = scope.ServiceProvider.GetRequiredService<ActivityUnitsDbContext>();
+        var calcDb = scope.ServiceProvider.GetRequiredService<CalculationDbContext>();
+
+        // 1. Ingest DESCO digital electricity bill (5000 kWh, 48000 BDT)
+        var descoRequest = new ConfirmedActivityRequest(
+            OrgId: orgId,
+            SiteId: null,
+            AssetId: null,
+            DocumentId: Guid.NewGuid(),
+            ActivityType: "Electricity",
+            Quantity: 5000m,
+            Unit: "kWh",
+            TotalCostBdt: 48000m,
+            BillingPeriod: "2026-09",
+            IsEstimated: false);
+
+        var descoResult = await activityWriter.RecordConfirmedActivityAsync(descoRequest);
+        Assert.True(descoResult.IsSuccess);
+
+        // 2. Ingest Titas Gas digital gas invoice (1200 m3, 36000 BDT)
+        var titasRequest = new ConfirmedActivityRequest(
+            OrgId: orgId,
+            SiteId: null,
+            AssetId: null,
+            DocumentId: Guid.NewGuid(),
+            ActivityType: "NaturalGas",
+            Quantity: 1200m,
+            Unit: "m3",
+            TotalCostBdt: 36000m,
+            BillingPeriod: "2026-09",
+            IsEstimated: false);
+
+        var titasResult = await activityWriter.RecordConfirmedActivityAsync(titasRequest);
+        Assert.True(titasResult.IsSuccess);
+
+        // Verify emissions computed for both
+        var emissions = await calcDb.EmissionResults
+            .Where(e => e.OrgId == orgId)
+            .ToListAsync();
+
+        Assert.Equal(2, emissions.Count);
+        var elec = emissions.First(e => e.Scope == 2);
+        Assert.Equal(5000m * 0.621000m, elec.KgCo2e);
+
+        var gas = emissions.First(e => e.Scope == 1);
+        Assert.Equal(1200m * 1.930000m, gas.KgCo2e);
+    }
+
     public void Dispose()
     {
         _connection.Dispose();

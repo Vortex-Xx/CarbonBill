@@ -18,10 +18,12 @@
 | **I4** | Security hardening & audit | done | `feat/a-i4-security-audit` | OWASP ASVS verification, adversarial IDOR sweep, tamper-resistant audit trail |
 | **I7** | Consultant workspace | done | `feat/a-i7-consultant-workspace` | Multi-tenant consultant switching, factor override workflow with justifications |
 | **I8** | Pilot deployment & backups | done | `feat/a-i8-pilot-backups` | VPS Docker Compose behind Caddy TLS, automated SQLite vacuum backup & restore drill |
+| **A-P3-1**| Kiosk PIN Lock security (I9 follow-up) | done | `feat/a-p3-pin-lock` | Single-tap kiosk PIN lock, `/api/v1/auth/pin-lock/set`, `/lock`, `/unlock` and Auth UI overlay |
+| **A-P3-2**| Direct Utility Connectors | done | `feat/a-p3-utility-connectors`| Digital intake API for DESCO, DPDC, and Titas Gas into calculation pipeline |
 
 ---
 
-**Blocked on:** None. All Track A Phase 0, Phase 1, and Phase 2 Integration tasks (P0-1a, P0-2, P0-5, A1–A7, I1, I4, I7, I8) Completed!
+**Blocked on:** None. All Track A Phase 0, Phase 1, Phase 2, and Phase 3 pilot enhancement tasks completed!
 
 **Next prompt:** Track A Complete. Ready for deployment and pilot testing.
 

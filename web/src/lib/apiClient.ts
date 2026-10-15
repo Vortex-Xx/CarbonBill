@@ -30,9 +30,24 @@ export function setSession(token: string, user: AuthUser) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+const KIOSK_LOCKED_KEY = 'carbonbill_kiosk_locked';
+
+export function isKioskLocked(): boolean {
+  return localStorage.getItem(KIOSK_LOCKED_KEY) === 'true';
+}
+
+export function setKioskLockState(locked: boolean) {
+  if (locked) {
+    localStorage.setItem(KIOSK_LOCKED_KEY, 'true');
+  } else {
+    localStorage.removeItem(KIOSK_LOCKED_KEY);
+  }
+}
+
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(KIOSK_LOCKED_KEY);
 }
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

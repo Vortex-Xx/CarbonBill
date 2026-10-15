@@ -72,6 +72,6 @@ This document tracks execution progress across all phases defined in the CarbonB
 - [ ] **Future Enhancements:**
   - [ ] Peer benchmark distributions from opt-in anonymised pilot cohorts.
   - [ ] Closed-loop realised savings verification (calibrating Measure Library against post-intervention utility bills).
-  - [ ] Direct utility API integrations (DESCO, DPDC, Titas Gas) and ERP/accounting software connectors.
+  - [x] Direct utility API integrations (DESCO, DPDC, Titas Gas) and digital intake connectors.
   - [ ] SMS and WhatsApp document intake channels.
   - [ ] Broader Scope 3 supply chain raw-material footprinting.

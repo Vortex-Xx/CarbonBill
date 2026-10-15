@@ -45,6 +45,9 @@ public class User : AggregateRoot
     public bool IsActive { get; set; } = true;
     public bool IsPlatformAdmin { get; set; }
 
+    public string? PinLockHash { get; set; }
+    public bool IsLocked { get; set; }
+
     public List<Membership> Memberships { get; set; } = [];
     public List<RefreshToken> RefreshTokens { get; set; } = [];
 }

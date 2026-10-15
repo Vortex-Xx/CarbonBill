@@ -26,8 +26,15 @@ export const AuthScreen: React.FC = () => {
   const [pin, setPin] = useState('1234');
   const [fullName, setFullName] = useState('Jahid Hasan');
   
+  // Kiosk Terminal Lock State (Prompt I9 Usability / Phase 3 Follow-up)
+  const [kioskPin, setKioskPin] = useState('');
+  const [isKioskLockedMode, setIsKioskLockedMode] = useState(() => {
+    return localStorage.getItem('carbonbill_kiosk_locked') === 'true';
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lockSuccessMsg, setLockSuccessMsg] = useState<string | null>(null);
 
   const handleStandardLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +104,29 @@ export const AuthScreen: React.FC = () => {
     }
   };
 
+  const handleUnlockKiosk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      await apiClient.post('/api/v1/auth/pin-lock/unlock', {
+        pin: kioskPin,
+      });
+
+      localStorage.removeItem('carbonbill_kiosk_locked');
+      setIsKioskLockedMode(false);
+      setLockSuccessMsg('কিয়স্ক আনলক হয়েছে! ফ্লোর মোডে ফিরে যাচ্ছেন...');
+      setTimeout(() => {
+        window.location.href = '/capture';
+      }, 500);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'পিন ভুল হয়েছে। পুনরায় চেষ্টা করুন।');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', padding: '1rem', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ maxWidth: '440px', width: '100%', backgroundColor: '#1e293b', borderRadius: '1rem', border: '1px solid #334155', padding: '2rem', color: '#f8fafc', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
@@ -146,13 +176,84 @@ export const AuthScreen: React.FC = () => {
           </button>
         </div>
 
+        {lockSuccessMsg && (
+          <div style={{ padding: '0.75rem 1rem', borderRadius: '0.5rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#6ee7b7', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
+            {lockSuccessMsg}
+          </div>
+        )}
+
         {error && (
           <div style={{ padding: '0.75rem 1rem', borderRadius: '0.5rem', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
             {error}
           </div>
         )}
 
-        {tab === 'login' ? (
+        {isKioskLockedMode ? (
+          /* Kiosk Locked Screen Overlay */
+          <form onSubmit={handleUnlockKiosk} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#334155', color: '#fbbf24', fontSize: '28px', marginBottom: '0.75rem' }}>
+                🔒
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 0.25rem 0', color: '#f8fafc' }}>
+                কিয়স্ক টার্মিনাল লকড
+              </h2>
+              <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: 0 }}>
+                শিফটের কাজ চালিয়ে যেতে ৪-সংখ্যার পিন (PIN) দিন
+              </p>
+            </div>
+
+            <div>
+              <input
+                type="password"
+                maxLength={4}
+                value={kioskPin}
+                onChange={(e) => setKioskPin(e.target.value)}
+                autoFocus
+                required
+                style={{ width: '100%', boxSizing: 'border-box', padding: '0.75rem', borderRadius: '0.5rem', border: '2px solid #10b981', backgroundColor: '#0f172a', color: '#fff', fontSize: '1.5rem', letterSpacing: '0.5rem', textAlign: 'center' }}
+                placeholder="••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                backgroundColor: '#10b981',
+                color: '#fff',
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              {loading ? 'আনলক হচ্ছে...' : '🔓 আনলক করুন (Unlock Terminal)'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem('carbonbill_kiosk_locked');
+                setIsKioskLockedMode(false);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#94a3b8',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                textAlign: 'center',
+                textDecoration: 'underline'
+              }}
+            >
+              অন্য অ্যাকাউন্ট দিয়ে লগইন করুন
+            </button>
+          </form>
+        ) : tab === 'login' ? (
           <form onSubmit={handleStandardLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.375rem', color: '#cbd5e1' }}>
