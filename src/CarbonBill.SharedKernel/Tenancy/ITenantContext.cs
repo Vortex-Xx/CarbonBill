@@ -9,11 +9,9 @@ public interface ITenantContext
 {
     Guid? CurrentOrgId { get; }
     Guid? CurrentUserId { get; }
-    string? CurrentRole { get; }
     bool IsAuthenticated { get; }
-    bool IsPlatformAdmin { get; }
 
-    void SetContext(Guid orgId, Guid userId, string? role, bool isPlatformAdmin = false);
+    void SetContext(Guid orgId, Guid userId);
     void Clear();
 }
 
@@ -21,24 +19,18 @@ public class TenantContext : ITenantContext
 {
     public Guid? CurrentOrgId { get; private set; }
     public Guid? CurrentUserId { get; private set; }
-    public string? CurrentRole { get; private set; }
-    public bool IsPlatformAdmin { get; private set; }
     public bool IsAuthenticated => CurrentUserId.HasValue;
 
-    public void SetContext(Guid orgId, Guid userId, string? role, bool isPlatformAdmin = false)
+    public void SetContext(Guid orgId, Guid userId)
     {
         CurrentOrgId = orgId;
         CurrentUserId = userId;
-        CurrentRole = role;
-        IsPlatformAdmin = isPlatformAdmin;
     }
 
     public void Clear()
     {
         CurrentOrgId = null;
         CurrentUserId = null;
-        CurrentRole = null;
-        IsPlatformAdmin = false;
     }
 }
 

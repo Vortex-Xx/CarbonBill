@@ -32,7 +32,6 @@ public class ExtractionDbContext(
 
             // Global Query Filter for Tenancy Isolation
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });
@@ -49,7 +48,6 @@ public class ExtractionDbContext(
             entity.HasIndex(e => new { e.OrgId, e.DocumentId });
 
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });

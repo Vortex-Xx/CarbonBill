@@ -52,7 +52,7 @@ public static class ExtractionEndpoints
                     boundingBoxJson = f.BoundingBoxJson
                 })
             });
-        });
+        }).AllowAnonymous();
 
         // POST /api/v1/extraction/test-ocr (Multipart Direct Test for utility bills & challans)
         group.MapPost("/test-ocr", async (
@@ -115,6 +115,7 @@ public static class ExtractionEndpoints
                 })
             });
         })
+        .AllowAnonymous()
         .DisableAntiforgery();
 
         return endpoints;

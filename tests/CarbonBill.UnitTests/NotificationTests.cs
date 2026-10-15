@@ -97,6 +97,9 @@ public sealed class NotificationTests : IDisposable
 
         var englishDigits = _renderer.FormatNumber(1234567890, "en");
         Assert.Equal("1234567890", englishDigits);
+
+        var defaultDigits = _renderer.FormatNumber(1234567890);
+        Assert.Equal("1234567890", defaultDigits);
     }
 
     [Fact]

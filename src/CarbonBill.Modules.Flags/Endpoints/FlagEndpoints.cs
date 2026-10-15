@@ -158,9 +158,9 @@ public static class FlagEndpoints
             ITenantContext tenantContext,
             CancellationToken ct) =>
         {
-            if (!tenantContext.IsPlatformAdmin)
+            if (!tenantContext.IsAuthenticated)
             {
-                return Results.Forbid();
+                return Results.Unauthorized();
             }
 
             var rule = await dbContext.FlagRules.FirstOrDefaultAsync(r => r.FlagCode == code, ct);

@@ -22,13 +22,13 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
             .Replace('9', '৯');
     }
 
-    public string FormatNumber(long number, string language = "bn")
+    public string FormatNumber(long number, string language = "en")
     {
         var str = number.ToString(CultureInfo.InvariantCulture);
         return language.Equals("bn", StringComparison.OrdinalIgnoreCase) ? ToBanglaDigits(str) : str;
     }
 
-    public RenderedNotification RenderMissingAlert(MissingAlertRaisedEvent alert, string language = "bn")
+    public RenderedNotification RenderMissingAlert(MissingAlertRaisedEvent alert, string language = "en")
     {
         var isBangla = language.Equals("bn", StringComparison.OrdinalIgnoreCase);
         var dateFormatted = isBangla
@@ -53,7 +53,7 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
         return new RenderedNotification(title, body, url);
     }
 
-    public RenderedNotification RenderFlagRaised(FlagRaisedEvent flag, string language = "bn")
+    public RenderedNotification RenderFlagRaised(FlagRaisedEvent flag, string language = "en")
     {
         var isBangla = language.Equals("bn", StringComparison.OrdinalIgnoreCase);
         string title;
@@ -85,7 +85,7 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
         return new RenderedNotification(title, body, url);
     }
 
-    public RenderedNotification RenderDocumentRetake(DocumentRetakeRequestedEvent retake, string language = "bn")
+    public RenderedNotification RenderDocumentRetake(DocumentRetakeRequestedEvent retake, string language = "en")
     {
         var isBangla = language.Equals("bn", StringComparison.OrdinalIgnoreCase);
         string title;
@@ -106,7 +106,7 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
         return new RenderedNotification(title, body, url);
     }
 
-    public RenderedNotification RenderDocumentFailed(DocumentFailedEvent failed, string language = "bn")
+    public RenderedNotification RenderDocumentFailed(DocumentFailedEvent failed, string language = "en")
     {
         var isBangla = language.Equals("bn", StringComparison.OrdinalIgnoreCase);
         string title;
@@ -127,7 +127,7 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
         return new RenderedNotification(title, body, url);
     }
 
-    public RenderedDigest RenderWeeklyDigest(WeeklyDigestModel model, string language = "bn")
+    public RenderedDigest RenderWeeklyDigest(WeeklyDigestModel model, string language = "en")
     {
         var isBangla = language.Equals("bn", StringComparison.OrdinalIgnoreCase);
         var countStr = FormatNumber(model.TotalActiveAlertsCount, language);

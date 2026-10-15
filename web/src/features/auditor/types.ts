@@ -17,6 +17,15 @@ export interface AuditorLineItem {
   factorSource: string;
   factorValue: number;
   factorCitationYear: number;
+  billCompany?: string;
+  billNumber?: string;
+  fileName?: string;
+  meterNumber?: string;
+  grossKgCo2e?: number;
+  calculationFormula?: string;
+  division?: string;
+  divisionBn?: string;
+  companyName?: string;
 }
 
 export interface AuditorSnapshot {

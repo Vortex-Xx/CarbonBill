@@ -8,19 +8,17 @@ namespace CarbonBill.Modules.IdentityTenancy.Services;
 
 public record CreateInvitationRequest(
     Guid OrgId,
-    string Role,
-    string Pin,
-    TimeSpan ValidityPeriod,
     Guid CreatedByUserId,
+    string? InvitedEmail = null,
+    TimeSpan? ValidityPeriod = null,
     int MaxUses = 1);
 
 public record JoinWithInvitationRequest(
     string Token,
-    string Pin,
     string FullName,
-    string? PhoneNumber,
-    string? Email = null,
-    string? Password = null);
+    string Email,
+    string Password,
+    string? PhoneNumber = null);
 
 public interface IInvitationService
 {
@@ -34,11 +32,6 @@ public class InvitationService(
 {
     public async Task<Result<Invitation>> CreateInvitationAsync(CreateInvitationRequest request, CancellationToken cancellationToken = default)
     {
-        if (!Roles.IsValid(request.Role))
-        {
-            return Result.Failure<Invitation>($"Invalid role '{request.Role}'.");
-        }
-
         var org = await dbContext.Organizations.FindAsync([request.OrgId], cancellationToken);
         if (org == null)
         {
@@ -46,15 +39,14 @@ public class InvitationService(
         }
 
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
-        var pinHash = passwordHasher.HashPassword(request.Pin);
+        var validity = request.ValidityPeriod ?? TimeSpan.FromDays(7);
 
         var invitation = new Invitation
         {
             OrgId = request.OrgId,
-            Role = request.Role,
             Token = token,
-            PinHash = pinHash,
-            ExpiresAtUtc = DateTime.UtcNow.Add(request.ValidityPeriod),
+            InvitedEmail = request.InvitedEmail?.Trim().ToLowerInvariant(),
+            ExpiresAtUtc = DateTime.UtcNow.Add(validity),
             CreatedByUserId = request.CreatedByUserId,
             MaxUses = request.MaxUses,
             UseCount = 0
@@ -84,30 +76,34 @@ public class InvitationService(
             return Result.Failure<(User, Membership)>("Invitation is expired or has reached its maximum uses.");
         }
 
-        if (!passwordHasher.VerifyPassword(request.Pin, invitation.PinHash))
+        var email = request.Email.Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(invitation.InvitedEmail) &&
+            !string.Equals(invitation.InvitedEmail, email, StringComparison.OrdinalIgnoreCase))
         {
-            return Result.Failure<(User, Membership)>("Incorrect PIN provided for this invitation.");
+            return Result.Failure<(User, Membership)>($"This invitation was sent specifically to {invitation.InvitedEmail}.");
         }
-
-        // Check or create user
-        var email = !string.IsNullOrWhiteSpace(request.Email)
-            ? request.Email.Trim().ToLowerInvariant()
-            : $"floor_{invitation.Token[..8]}@carbonbill.local";
 
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
         if (user == null)
         {
-            var defaultPassword = request.Password ?? Guid.NewGuid().ToString("N");
             user = new User
             {
                 Email = email,
                 FullName = request.FullName,
                 PhoneNumber = request.PhoneNumber,
-                PasswordHash = passwordHasher.HashPassword(defaultPassword),
-                PreferredLanguage = "bn"
+                PasswordHash = passwordHasher.HashPassword(request.Password),
+                PreferredLanguage = "en"
             };
             dbContext.Users.Add(user);
             await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        else
+        {
+            // Verify existing user password
+            if (!passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+            {
+                return Result.Failure<(User, Membership)>("User with this email already exists. Incorrect password provided to join organization.");
+            }
         }
 
         // Check if membership already exists
@@ -118,7 +114,6 @@ public class InvitationService(
         if (existingMembership != null)
         {
             membership = existingMembership;
-            membership.Role = invitation.Role;
             membership.IsActive = true;
         }
         else
@@ -127,7 +122,6 @@ public class InvitationService(
             {
                 UserId = user.Id,
                 OrgId = invitation.OrgId,
-                Role = invitation.Role,
                 IsActive = true
             };
             dbContext.Memberships.Add(membership);

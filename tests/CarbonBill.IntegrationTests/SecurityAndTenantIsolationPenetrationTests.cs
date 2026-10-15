@@ -35,6 +35,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace CarbonBill.IntegrationTests;
@@ -149,7 +150,7 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         var docAId = Guid.NewGuid();
 
         // 1. Seed document under Org A
-        _tenantContext.SetContext(orgA, userA, Roles.Owner);
+        _tenantContext.SetContext(orgA, userA);
         using (var docsDbA = new DocumentsDbContext(_docsDbOptions, _tenantContext))
         {
             var doc = new Document
@@ -169,7 +170,7 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         }
 
         // 2. Adversary: User B from Org B tries to read Org A's document
-        _tenantContext.SetContext(orgB, userB, Roles.Owner);
+        _tenantContext.SetContext(orgB, userB);
         using (var docsDbB = new DocumentsDbContext(_docsDbOptions, _tenantContext))
         {
             var docFromB = await docsDbB.Documents.FirstOrDefaultAsync(d => d.Id == docAId);
@@ -213,7 +214,7 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         var reportAId = Guid.NewGuid();
 
         // 1. Create Report and ShareLink for Org A
-        _tenantContext.SetContext(orgA, userA, Roles.Compliance);
+        _tenantContext.SetContext(orgA, userA);
         using (var dbA = new ReportingDbContext(_reportsDbOptions, _tenantContext))
         {
             var report = new Report
@@ -241,7 +242,7 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         }
 
         // 2. Adversary Org B attempts to query Org A's reports or share links
-        _tenantContext.SetContext(orgB, userB, Roles.Compliance);
+        _tenantContext.SetContext(orgB, userB);
         using (var dbB = new ReportingDbContext(_reportsDbOptions, _tenantContext))
         {
             var reports = await dbB.Reports.ToListAsync();
@@ -261,7 +262,7 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         var userB = Guid.NewGuid();
 
         // 1. Org A Flags and Recommendations
-        _tenantContext.SetContext(orgA, userA, Roles.Owner);
+        _tenantContext.SetContext(orgA, userA);
         using (var flagsDbA = new FlagsDbContext(_flagsDbOptions, _tenantContext))
         using (var recsDbA = new RecommendationsDbContext(_recsDbOptions, _tenantContext))
         {
@@ -334,7 +335,7 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         }
 
         // 2. Org B attempts to read Org A's proprietary flags & financial recommendations
-        _tenantContext.SetContext(orgB, userB, Roles.Owner);
+        _tenantContext.SetContext(orgB, userB);
         using (var flagsDbB = new FlagsDbContext(_flagsDbOptions, _tenantContext))
         using (var recsDbB = new RecommendationsDbContext(_recsDbOptions, _tenantContext))
         {
@@ -352,7 +353,7 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
         var orgA = Guid.NewGuid();
         var userA = Guid.NewGuid();
 
-        _tenantContext.SetContext(orgA, userA, Roles.Owner);
+        _tenantContext.SetContext(orgA, userA);
         using var auditDb = new AuditDbContext(_auditDbOptions, _tenantContext);
 
         var log = new AuditLog
@@ -378,75 +379,87 @@ public class SecurityAndTenantIsolationPenetrationTests : IDisposable
     }
 
     [Fact]
-    public void RolesMatrix_AuthorizationPolicies_StrictPermissions()
+    public void ZeroRoles_TokensContainNoRoleClaims_IdenticalFullAccess()
     {
-        // Assert Role Definitions
-        Assert.Equal("FloorStaff", Roles.FloorStaff);
-        Assert.Equal("Accountant", Roles.Accountant);
-        Assert.Equal("Compliance", Roles.Compliance);
-        Assert.Equal("Owner", Roles.Owner);
-        Assert.Equal("Consultant", Roles.Consultant);
-        Assert.Equal("PlatformAdmin", Roles.PlatformAdmin);
+        // Acceptance Test: Prove NO role concept exists in generated JWT tokens
+        var inMemoryConfig = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Key"] = "SuperSecretDevKeyForTestingCarbonBillMustBeAtLeast32BytesLong!",
+                ["Jwt:Issuer"] = "CarbonBill",
+                ["Jwt:Audience"] = "CarbonBillClients"
+            })
+            .Build();
 
-        // Verify that FloorStaff cannot have Compliance or Admin rights
-        var floorClaims = new[]
+        var tokenService = new TokenService(inMemoryConfig);
+        var orgId = Guid.NewGuid();
+        var user = new User
         {
-            new Claim(ClaimTypes.Role, Roles.FloorStaff),
-            new Claim("org_id", Guid.NewGuid().ToString())
+            Id = Guid.NewGuid(),
+            Email = "teammate@apex.local",
+            FullName = "Teammate User",
+            PreferredLanguage = "bn"
         };
-        var floorPrincipal = new ClaimsPrincipal(new ClaimsIdentity(floorClaims, "TestAuth"));
+        var membership = new Membership
+        {
+            UserId = user.Id,
+            OrgId = orgId,
+            IsActive = true
+        };
 
-        Assert.True(floorPrincipal.IsInRole(Roles.FloorStaff));
-        Assert.False(floorPrincipal.IsInRole(Roles.Compliance));
-        Assert.False(floorPrincipal.IsInRole(Roles.Owner));
-        Assert.False(floorPrincipal.IsInRole(Roles.PlatformAdmin));
+        var tokens = tokenService.GenerateTokens(user, membership);
+        Assert.NotNull(tokens.AccessToken);
+
+        var principal = tokenService.ValidateToken(tokens.AccessToken);
+        Assert.NotNull(principal);
+
+        // Verify NO role claim exists anywhere in the token
+        Assert.Null(principal.FindFirst(ClaimTypes.Role));
+        Assert.Null(principal.FindFirst("role"));
+        Assert.Equal(orgId.ToString(), principal.FindFirst("org_id")?.Value);
+        Assert.Equal(user.Id.ToString(), principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? principal.FindFirst("sub")?.Value);
     }
 
     [Fact]
-    public async Task KioskPinLock_Set_Lock_And_Unlock_Lifecycle()
+    public async Task InviteLink_TeammatesJoinOrg_WithIdenticalAccess()
     {
         var orgA = Guid.NewGuid();
         var userA = Guid.NewGuid();
         var passwordHasher = new PasswordHasher();
 
-        _tenantContext.SetContext(orgA, userA, Roles.FloorStaff);
+        _tenantContext.SetContext(orgA, userA);
         using var identityDb = new IdentityTenancyDbContext(_identityDbOptions, _tenantContext);
 
-        var floorUser = new User
-        {
-            Id = userA,
-            Email = "jahid.kiosk@apex.local",
-            FullName = "Jahid Hasan",
-            PasswordHash = passwordHasher.HashPassword("Pass1234!"),
-            PreferredLanguage = "bn",
-            IsActive = true
-        };
-        identityDb.Users.Add(floorUser);
+        var org = new Organization { Id = orgA, Name = "Apex RMG Ltd", Slug = "apex-rmg" };
+        identityDb.Organizations.Add(org);
         await identityDb.SaveChangesAsync();
 
-        // 1. Set Kiosk 4-digit PIN
-        floorUser.PinLockHash = passwordHasher.HashPassword("1234");
-        await identityDb.SaveChangesAsync();
-        Assert.NotNull(floorUser.PinLockHash);
+        var invitationService = new InvitationService(identityDb, passwordHasher);
 
-        // 2. Lock Kiosk
-        floorUser.IsLocked = true;
-        await identityDb.SaveChangesAsync();
-        Assert.True(floorUser.IsLocked);
+        // 1. Create teammate invitation link (no role parameter)
+        var inviteResult = await invitationService.CreateInvitationAsync(new CreateInvitationRequest(
+            OrgId: orgA,
+            CreatedByUserId: userA,
+            ValidityPeriod: TimeSpan.FromDays(7),
+            MaxUses: 5));
 
-        // 3. Attempt unlock with wrong PIN fails
-        var wrongPinValid = passwordHasher.VerifyPassword("9999", floorUser.PinLockHash);
-        Assert.False(wrongPinValid);
+        Assert.True(inviteResult.IsSuccess);
+        var invite = inviteResult.Value;
+        Assert.NotNull(invite.Token);
 
-        // 4. Unlock with correct PIN succeeds
-        var correctPinValid = passwordHasher.VerifyPassword("1234", floorUser.PinLockHash);
-        Assert.True(correctPinValid);
-        floorUser.IsLocked = false;
-        await identityDb.SaveChangesAsync();
+        // 2. Teammate accepts invitation link
+        var joinResult = await invitationService.JoinWithInvitationAsync(new JoinWithInvitationRequest(
+            Token: invite.Token,
+            FullName: "New Teammate",
+            Email: "teammate@apex.local",
+            Password: "SecurePassword123!"));
 
-        var reloaded = await identityDb.Users.FindAsync(userA);
-        Assert.NotNull(reloaded);
-        Assert.False(reloaded.IsLocked);
+        Assert.True(joinResult.IsSuccess);
+        var (newUser, newMembership) = joinResult.Value;
+
+        Assert.Equal(orgA, newMembership.OrgId);
+        Assert.Equal(newUser.Id, newMembership.UserId);
+        Assert.True(newMembership.IsActive);
     }
 
     public void Dispose()

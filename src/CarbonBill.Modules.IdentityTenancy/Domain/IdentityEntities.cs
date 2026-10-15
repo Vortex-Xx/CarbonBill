@@ -3,28 +3,6 @@ using CarbonBill.SharedKernel.Tenancy;
 
 namespace CarbonBill.Modules.IdentityTenancy.Domain;
 
-public static class Roles
-{
-    public const string FloorStaff = "FloorStaff";
-    public const string Accountant = "Accountant";
-    public const string Compliance = "Compliance";
-    public const string Owner = "Owner";
-    public const string Consultant = "Consultant";
-    public const string PlatformAdmin = "PlatformAdmin";
-
-    public static readonly IReadOnlyList<string> All =
-    [
-        FloorStaff,
-        Accountant,
-        Compliance,
-        Owner,
-        Consultant,
-        PlatformAdmin
-    ];
-
-    public static bool IsValid(string role) => All.Contains(role);
-}
-
 public class Organization : AggregateRoot
 {
     public string Name { get; set; } = string.Empty;
@@ -41,12 +19,12 @@ public class User : AggregateRoot
     public string FullName { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
-    public string PreferredLanguage { get; set; } = "bn"; // Bangla-first
+    public string PreferredLanguage { get; set; } = "en"; // English by default
     public bool IsActive { get; set; } = true;
-    public bool IsPlatformAdmin { get; set; }
 
-    public string? PinLockHash { get; set; }
-    public bool IsLocked { get; set; }
+    // Password Reset
+    public string? PasswordResetTokenHash { get; set; }
+    public DateTime? PasswordResetExpiresAtUtc { get; set; }
 
     public List<Membership> Memberships { get; set; } = [];
     public List<RefreshToken> RefreshTokens { get; set; } = [];
@@ -60,7 +38,6 @@ public class Membership : BaseEntity, ITenantScopedEntity
     public Guid OrgId { get; set; }
     public Organization Organization { get; set; } = null!;
 
-    public string Role { get; set; } = Roles.FloorStaff;
     public bool IsActive { get; set; } = true;
 }
 
@@ -69,9 +46,8 @@ public class Invitation : BaseEntity, ITenantScopedEntity
     public Guid OrgId { get; set; }
     public Organization Organization { get; set; } = null!;
 
-    public string Role { get; set; } = Roles.FloorStaff;
-    public string Token { get; set; } = string.Empty; // QR token
-    public string PinHash { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string? InvitedEmail { get; set; }
     public DateTime ExpiresAtUtc { get; set; }
     public Guid CreatedByUserId { get; set; }
     public bool IsRevoked { get; set; }

@@ -44,7 +44,6 @@ public class DocumentsDbContext(
 
             // Strict Global Query Filter for Tenancy Isolation
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });
@@ -57,7 +56,6 @@ public class DocumentsDbContext(
             entity.HasIndex(e => e.DocumentId);
 
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.Document.OrgId == _tenantContext.CurrentOrgId);
         });

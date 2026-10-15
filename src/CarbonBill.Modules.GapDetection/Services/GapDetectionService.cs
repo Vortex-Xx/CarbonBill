@@ -14,13 +14,15 @@ public class GapDetectionService(
     IDocumentReadModel documentReadModel,
     IDomainEventPublisher eventPublisher,
     TimeProvider timeProvider,
-    ILogger<GapDetectionService> logger) : IGapDetector
+    ILogger<GapDetectionService> logger,
+    CarbonBill.SharedKernel.Providers.ILangSmithTracer? langSmithTracer = null) : IGapDetector
 {
     public async Task<IReadOnlyList<MissingAlert>> CheckMissingDocumentsAsync(
         Guid orgId,
         string period,
         CancellationToken cancellationToken = default)
     {
+        var startTimeUtc = DateTime.UtcNow;
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var rules = await ruleReader.GetRulesForOrgAsync(orgId, cancellationToken);
         var createdOrUpdatedAlerts = new List<MissingAlert>();
@@ -125,6 +127,52 @@ public class GapDetectionService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (langSmithTracer != null)
+        {
+            try
+            {
+                await langSmithTracer.TraceRunAsync(
+                    "MissingDocumentGapAnalyzer",
+                    "chain",
+                    new
+                    {
+                        orgId,
+                        period,
+                        expectedRulesCount = rules.Count,
+                        assetsChecked = rules.Select(r => new { r.AssetName, r.DocType }).ToList()
+                    },
+                    new
+                    {
+                        alertsCreatedOrUpdated = createdOrUpdatedAlerts.Count,
+                        missingAlerts = createdOrUpdatedAlerts.Select(a => new
+                        {
+                            a.AssetName,
+                            a.DocType,
+                            a.Period,
+                            a.Severity,
+                            a.EscalationState,
+                            a.Status
+                        }).ToList()
+                    },
+                    startTimeUtc,
+                    DateTime.UtcNow,
+                    new Dictionary<string, object>
+                    {
+                        ["module"] = "GapDetection",
+                        ["engine"] = "MissingDocumentGapAnalyzer",
+                        ["orgId"] = orgId.ToString(),
+                        ["period"] = period
+                    },
+                    null,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to emit LangSmith trace for Gap Detection.");
+            }
+        }
+
         return createdOrUpdatedAlerts;
     }
 

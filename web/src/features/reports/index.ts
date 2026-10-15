@@ -10,7 +10,6 @@ import { ReportsView } from './ReportsView';
 export const reportsRoutes = [
   {
     path: '/reports',
-    role: 'Compliance',
     component: ReportsView,
   },
 ];

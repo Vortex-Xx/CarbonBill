@@ -191,7 +191,7 @@ public class NotificationService(
             {
                 UserId = userId,
                 OrgId = orgId,
-                PreferredLanguage = "bn", // Bangla-first by default
+                PreferredLanguage = "en", // English by default
                 InAppEnabled = true,
                 WebPushEnabled = true,
                 EmailEnabled = true,

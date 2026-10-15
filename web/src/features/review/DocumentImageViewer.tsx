@@ -8,6 +8,7 @@ interface DocumentImageViewerProps {
   contentType?: string;
   activeField: ReviewField | null;
   fields: ReviewField[];
+  isBangla?: boolean;
 }
 
 export function DocumentImageViewer({
@@ -16,6 +17,7 @@ export function DocumentImageViewer({
   contentType,
   activeField,
   fields,
+  isBangla = false,
 }: DocumentImageViewerProps) {
   const [zoom, setZoom] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
@@ -39,6 +41,12 @@ export function DocumentImageViewer({
     setRotation(0);
   }
 
+  React.useEffect(() => {
+    setImageError(false);
+    setZoom(1);
+    setRotation(0);
+  }, [documentId]);
+
   // Parse bounding box if present
   let activeBbox: { left: number; top: number; width: number; height: number } | null = null;
   if (activeField?.boundingBoxJson) {
@@ -50,14 +58,36 @@ export function DocumentImageViewer({
   }
 
   const fileUrl = documentId ? `/api/v1/documents/${documentId}/file` : null;
-  const vendorName = fields.find((f) => f.fieldName === 'Vendor')?.normalizedValue ||
-                     fields.find((f) => f.fieldName === 'Vendor')?.rawValue ||
-                     'ইউটিলিটি চালান (Utility Provider)';
-  const billNo = fields.find((f) => f.fieldName === 'BillNumber')?.rawValue || 'N/A';
-  const period = fields.find((f) => f.fieldName === 'BillingPeriod')?.rawValue || 'চলতি মাস';
-  const quantity = fields.find((f) => f.fieldName === 'Quantity')?.rawValue || '০';
-  const unit = fields.find((f) => f.fieldName === 'Unit')?.rawValue || '';
-  const amount = fields.find((f) => f.fieldName === 'AmountBdt')?.rawValue || '০.০০';
+
+  const findFieldVal = (name: string) => {
+    const f = fields.find(
+      (item) => item.fieldName?.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    return f?.correctedValue || f?.normalizedValue || f?.rawValue;
+  };
+
+  const vendorName =
+    findFieldVal('Vendor') ||
+    findFieldVal('Organization') ||
+    findFieldVal('Provider') ||
+    (isBangla ? 'ইউটিলিটি চালান (Utility Provider)' : 'Utility Provider / Vendor');
+  const billNo =
+    findFieldVal('BillNumber') ||
+    findFieldVal('BillNo') ||
+    findFieldVal('AccountNumber') ||
+    'N/A';
+  const period =
+    findFieldVal('BillingPeriod') ||
+    findFieldVal('BillMonth') ||
+    findFieldVal('Period') ||
+    (isBangla ? 'চলতি মাস' : 'Current Period');
+  const quantity = findFieldVal('Quantity') || '0';
+  const unit = findFieldVal('Unit') || '';
+  const amount =
+    findFieldVal('AmountBdt') ||
+    findFieldVal('Amount') ||
+    findFieldVal('TotalAmount') ||
+    '0.00';
 
   return (
     <div className="flex flex-col h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-md">
@@ -81,7 +111,7 @@ export function DocumentImageViewer({
             }`}
           >
             <ImageIcon size={13} />
-            <span>মূল ছবি</span>
+            <span>{isBangla ? 'মূল ছবি' : 'Original Image'}</span>
           </button>
           <button
             onClick={() => setViewMode('data')}
@@ -92,7 +122,7 @@ export function DocumentImageViewer({
             }`}
           >
             <Eye size={13} />
-            <span>ডিজিটাল ডেটা</span>
+            <span>{isBangla ? 'ডিজিটাল ডেটা' : 'Digital Data'}</span>
           </button>
         </div>
 
@@ -100,7 +130,7 @@ export function DocumentImageViewer({
         <div className="flex items-center gap-1">
           <button
             onClick={handleZoomOut}
-            title="ছোট করুন (Zoom Out)"
+            title={isBangla ? 'ছোট করুন (Zoom Out)' : 'Zoom Out'}
             className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
           >
             <ZoomOut size={15} />
@@ -110,21 +140,21 @@ export function DocumentImageViewer({
           </span>
           <button
             onClick={handleZoomIn}
-            title="বড় করুন (Zoom In)"
+            title={isBangla ? 'বড় করুন (Zoom In)' : 'Zoom In'}
             className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
           >
             <ZoomIn size={15} />
           </button>
           <button
             onClick={handleRotate}
-            title="ঘুরান (Rotate 90°)"
+            title={isBangla ? 'ঘুরান (Rotate 90°)' : 'Rotate 90°'}
             className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
           >
             <RotateCw size={15} />
           </button>
           <button
             onClick={handleReset}
-            title="রিসেট ফিট (Reset)"
+            title={isBangla ? 'রিসেট ফিট (Reset)' : 'Fit to Screen'}
             className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
           >
             <Maximize2 size={15} />
@@ -144,12 +174,21 @@ export function DocumentImageViewer({
         >
           {viewMode === 'image' && fileUrl && !imageError ? (
             <div className="relative inline-block max-w-full">
-              <img
-                src={fileUrl}
-                alt={fileName}
-                onError={() => setImageError(true)}
-                className="max-h-[640px] w-auto object-contain rounded-lg shadow-2xl select-none pointer-events-auto bg-slate-900"
-              />
+              {fileName.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={fileUrl}
+                  title={fileName}
+                  className="w-[560px] h-[640px] rounded-lg border-0 bg-white shadow-2xl"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <img
+                  src={fileUrl}
+                  alt={fileName}
+                  onError={() => setImageError(true)}
+                  className="max-h-[640px] w-auto object-contain rounded-lg shadow-2xl select-none pointer-events-auto bg-slate-900"
+                />
+              )}
 
               {/* Bounding Box Highlight Overlay */}
               {activeBbox && (
@@ -179,14 +218,16 @@ export function DocumentImageViewer({
                     <h2 className="text-base font-black text-emerald-800 tracking-tight">
                       {vendorName}
                     </h2>
-                    <p className="text-[11px] text-slate-500">কার্বনবিল ডিজিটাল চালান প্রিভিউ</p>
+                    <p className="text-[11px] text-slate-500">
+                      {isBangla ? 'কার্বনবিল ডিজিটাল চালান প্রিভিউ' : 'CarbonBill Digital Slip Preview'}
+                    </p>
                   </div>
                   <div className="text-right">
                     <span className="font-mono text-xs font-bold text-slate-700">
-                      বিল নং: {billNo}
+                      {isBangla ? 'বিল নং:' : 'Bill No:'} {billNo}
                     </span>
                     <p className="text-[10px] text-slate-500 font-medium">
-                      হিসাবের মাস: {period}
+                      {isBangla ? 'হিসাবের মাস:' : 'Period:'} {period}
                     </p>
                   </div>
                 </div>
@@ -195,13 +236,17 @@ export function DocumentImageViewer({
               {/* Document Metadata Table */}
               <div className="grid grid-cols-2 gap-3 mb-5 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
-                  <p className="text-[10px] uppercase text-slate-400 font-bold">ফাইল নাম</p>
+                  <p className="text-[10px] uppercase text-slate-400 font-bold">
+                    {isBangla ? 'ফাইল নাম' : 'File Name'}
+                  </p>
                   <p className="font-bold text-slate-800 truncate font-mono text-[11px]" title={fileName}>
                     {fileName}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase text-slate-400 font-bold">ডকুমেন্ট আইডি</p>
+                  <p className="text-[10px] uppercase text-slate-400 font-bold">
+                    {isBangla ? 'ডকুমেন্ট আইডি' : 'Document ID'}
+                  </p>
                   <p className="font-mono text-[11px] text-slate-600 truncate">
                     {documentId ? documentId.slice(0, 8).toUpperCase() : 'N/A'}
                   </p>
@@ -211,14 +256,18 @@ export function DocumentImageViewer({
               {/* Extracted Values Table */}
               <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-4 mb-4 space-y-3">
                 <div className="flex justify-between items-center py-1.5 border-b border-slate-200">
-                  <span className="text-slate-600 font-medium">রেকর্ডকৃত মোট ব্যবহার (Consumption):</span>
+                  <span className="text-slate-600 font-medium">
+                    {isBangla ? 'রেকর্ডকৃত মোট ব্যবহার (Consumption):' : 'Recorded Consumption Quantity:'}
+                  </span>
                   <span className="font-mono font-bold text-slate-900 text-sm">
                     {quantity} {unit}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center pt-2">
-                  <span className="text-slate-800 font-black text-sm">সর্বমোট প্রদেয় টাকা (Net Amount):</span>
+                  <span className="text-slate-800 font-black text-sm">
+                    {isBangla ? 'সর্বমোট প্রদেয় টাকা (Net Amount):' : 'Total Billed Amount (BDT):'}
+                  </span>
                   <span className="font-mono font-black text-emerald-700 text-base">
                     ৳ {amount}
                   </span>
@@ -227,7 +276,11 @@ export function DocumentImageViewer({
 
               {/* All Extracted OCR Fields Grid */}
               <div className="mt-4 pt-3 border-t border-slate-100">
-                <p className="text-[11px] font-bold text-slate-600 mb-2">উদ্ধারকৃত ফিল্ড তালিকা ({fields.length}টি ফিল্ড):</p>
+                <p className="text-[11px] font-bold text-slate-600 mb-2">
+                  {isBangla
+                    ? `উদ্ধারকৃত ফিল্ড তালিকা (${fields.length}টি ফিল্ড):`
+                    : `Extracted Key-Value Fields (${fields.length} fields):`}
+                </p>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                   {fields.map((f) => (
                     <div
@@ -248,7 +301,13 @@ export function DocumentImageViewer({
               {/* Status Stamp */}
               <div className="mt-6 flex justify-between items-center pt-3 border-t border-slate-100">
                 <span className="text-[10px] text-slate-400 font-medium">
-                  {imageError ? 'আসল ইমেজ ফাইল না থাকায় ডিজিটাল কার্ড দেখানো হচ্ছে' : 'ডিজিটাল যাচাইযোগ্য কপি'}
+                  {imageError
+                    ? isBangla
+                      ? 'আসল ইমেজ ফাইল না থাকায় ডিজিটাল কার্ড দেখানো হচ্ছে'
+                      : 'Displaying verified digital representation (raw preview unavailable)'
+                    : isBangla
+                    ? 'ডিজিটাল যাচাইযোগ্য কপি'
+                    : 'Digital Verified Ledger Entry'}
                 </span>
                 <div className="border-2 border-emerald-600 text-emerald-800 font-bold text-[10px] uppercase px-3 py-1 rounded-lg inline-block">
                   Verified Ingestion

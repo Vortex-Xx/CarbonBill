@@ -78,7 +78,8 @@ public record RecommendationsResponse(
 public class RecommendationsService(
     RecommendationsDbContext dbContext,
     IRecommendationPipeline pipeline,
-    ILogger<RecommendationsService> logger)
+    ILogger<RecommendationsService> logger,
+    CarbonBill.SharedKernel.Providers.ILangSmithTracer? langSmithTracer = null)
 {
     public async Task<FacilityProfile> GetOrCreateProfileAsync(
         Guid orgId,
@@ -167,6 +168,8 @@ public class RecommendationsService(
             return [];
         }
 
+        var startTimeUtc = DateTime.UtcNow;
+
         // Run the 8-step pipeline
         var candidateEvaluations = pipeline.Execute(profile, measures);
 
@@ -234,6 +237,68 @@ public class RecommendationsService(
 
         await dbContext.SaveChangesAsync(ct);
         logger.LogInformation("Saved {Count} recommendations for org {OrgId}.", savedEntities.Count, orgId);
+
+        if (langSmithTracer != null)
+        {
+            try
+            {
+                var topMeasures = candidateEvaluations.Take(5).Select(e => new
+                {
+                    code = e.Measure.MeasureCode,
+                    name = e.Measure.NameEn,
+                    rank = e.Rank,
+                    compositeScore = e.CompositeScore,
+                    paybackYears = e.PaybackYears,
+                    avoidedTco2e = e.AvoidedTco2e.Typical,
+                    savingsBdt = e.AnnualSavingsBdt.Typical,
+                    capexLow = e.CapexBdt.Low,
+                    capexHigh = e.CapexBdt.High
+                }).ToList();
+
+                await langSmithTracer.TraceRunAsync(
+                    "MaccDecarbonizationPipeline",
+                    "chain",
+                    new
+                    {
+                        orgId,
+                        siteId,
+                        profile = new
+                        {
+                            sector = profile.Sector,
+                            budgetBand = profile.BudgetBand,
+                            maxBudgetBdt = profile.MaxBudgetBdt,
+                            baselineMonthlyKwh = profile.BaselineMonthlyKwh,
+                            baselineMonthlyDieselLitres = profile.BaselineMonthlyDieselLitres,
+                            baselineMonthlyGasM3 = profile.BaselineMonthlyGasM3,
+                            hasBoiler = profile.HasBoiler,
+                            hasGenset = profile.HasGenset
+                        },
+                        availableMeasuresCount = measures.Count
+                    },
+                    new
+                    {
+                        totalRecommendationsGenerated = candidateEvaluations.Count,
+                        totalSavedEntities = savedEntities.Count,
+                        topRecommendations = topMeasures,
+                        totalAvoidedTco2eTypical = candidateEvaluations.Sum(e => e.AvoidedTco2e.Typical),
+                        totalSavingsBdtTypical = candidateEvaluations.Sum(e => e.AnnualSavingsBdt.Typical)
+                    },
+                    startTimeUtc,
+                    DateTime.UtcNow,
+                    new Dictionary<string, object>
+                    {
+                        ["module"] = "Recommendations",
+                        ["pipeline"] = "MaccDecarbonization8Step",
+                        ["orgId"] = orgId.ToString()
+                    },
+                    null,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to emit LangSmith trace for MACC recommendations.");
+            }
+        }
 
         return savedEntities;
     }

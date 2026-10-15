@@ -10,7 +10,6 @@ import { RecommendationsView } from './RecommendationsView';
 export const recommendationsRoutes = [
   {
     path: '/recommendations',
-    role: 'Owner',
     component: RecommendationsView,
   },
 ];

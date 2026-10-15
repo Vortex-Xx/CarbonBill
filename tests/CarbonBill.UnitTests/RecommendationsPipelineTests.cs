@@ -576,7 +576,7 @@ public class RecommendationsPipelineTests
 
         var tenantId = Guid.NewGuid();
         var tenantContext = new TenantContext();
-        tenantContext.SetContext(tenantId, Guid.NewGuid(), "OrgAdmin");
+        tenantContext.SetContext(tenantId, Guid.NewGuid());
 
         var options = new DbContextOptionsBuilder<RecommendationsDbContext>()
             .UseSqlite(connection)

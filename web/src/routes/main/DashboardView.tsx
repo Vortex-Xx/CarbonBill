@@ -34,18 +34,31 @@ export default function DashboardView({ user, onGoToFloor, onGoToReview, onLogou
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab') as MainTab;
-    if (tabParam && ['dashboard', 'flags', 'recommendations', 'reports', 'auditor'].includes(tabParam)) {
-      setActiveTab(tabParam);
+    function syncTabFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as MainTab;
+      if (tabParam && ['dashboard', 'flags', 'recommendations', 'reports', 'auditor'].includes(tabParam)) {
+        setActiveTab(tabParam);
+      } else {
+        setActiveTab('dashboard');
+      }
     }
+
+    syncTabFromUrl();
+    window.addEventListener('popstate', syncTabFromUrl);
+    return () => window.removeEventListener('popstate', syncTabFromUrl);
   }, []);
 
   function handleTabChange(tab: MainTab) {
+    if (tab === activeTab) return;
     setActiveTab(tab);
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    window.history.replaceState({}, '', url.toString());
+    if (tab === 'dashboard') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', tab);
+    }
+    window.history.pushState({ tab }, '', url.toString());
   }
 
   return (
@@ -96,7 +109,7 @@ export default function DashboardView({ user, onGoToFloor, onGoToReview, onLogou
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-800">{user.fullName}</p>
                 <span className="text-[10px] text-teal-700 font-semibold px-1.5 py-0.5 bg-teal-50 rounded">
-                  {t(`roles.${user.activeRole}`)}
+                  {user.activeOrgName || 'Apex Textiles'}
                 </span>
               </div>
               <button
@@ -139,7 +152,7 @@ export default function DashboardView({ user, onGoToFloor, onGoToReview, onLogou
               <AlertCircle size={14} />
               {isBangla ? 'কার্বন ফ্ল্যাগস' : 'Carbon Flags'}
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold ml-0.5">
-                ৩
+                {isBangla ? '৩' : '3'}
               </span>
             </button>
 

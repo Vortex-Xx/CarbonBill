@@ -10,7 +10,6 @@ import { FlagsFeed } from './FlagsFeed';
 export const flagsRoutes = [
   {
     path: '/flags',
-    role: 'Compliance',
     component: FlagsFeed,
   },
 ];

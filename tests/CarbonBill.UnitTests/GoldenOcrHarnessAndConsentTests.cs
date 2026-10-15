@@ -149,4 +149,64 @@ public class GoldenOcrHarnessAndConsentTests
         Assert.True(report.AccuracyPerField["AmountBdt"] >= 95.0);
         Assert.NotEmpty(markdown);
     }
+
+    [Fact]
+    public void FallbackRuleBasedExtraction_BpdbElectricityBill_ExtractsVendorAmountAndUnits()
+    {
+        // Raw OCR text snippet from BPDB Chittagong bill
+        var bpdbOcr = """
+        BANGLADESH POWER DEVELOPMENT BOARD ELECTRICITY BILL
+        LOCATION CHITTAGONG
+        MONTH May-24
+        BILL NO 47912385
+        CONSUMER NO 77383458
+        METER NO 250531695
+        PRESENT RDG 4750
+        PREVIOUS RDG 4630
+        CONSUMED UNIT: 120
+        ELECTRICITY CHARGE TAKA 591.74
+        PRINCIPAL AMOUNT 651.74
+        BILL MONTH TOTAL 683.74
+        AMOUNT TO BE PAID 684.00
+        Balance: 664.00
+        """;
+
+        var result = GroqLlmExtractor.FallbackRuleBasedExtraction(bpdbOcr, "bpdb_bill.jpg");
+
+        Assert.True(result.Success);
+        Assert.Equal("ElectricityBill", result.DetectedDocumentType);
+
+        var vendor = result.Fields.FirstOrDefault(f => f.FieldName == "Vendor")?.RawValue;
+        var billNo = result.Fields.FirstOrDefault(f => f.FieldName == "BillNumber")?.RawValue;
+        var period = result.Fields.FirstOrDefault(f => f.FieldName == "BillingPeriod")?.RawValue;
+        var qty = result.Fields.FirstOrDefault(f => f.FieldName == "Quantity")?.RawValue;
+        var unit = result.Fields.FirstOrDefault(f => f.FieldName == "Unit")?.RawValue;
+        var amount = result.Fields.FirstOrDefault(f => f.FieldName == "AmountBdt")?.RawValue;
+        var meterNo = result.Fields.FirstOrDefault(f => f.FieldName == "MeterNumber")?.RawValue;
+        var consumerNo = result.Fields.FirstOrDefault(f => f.FieldName == "ConsumerNumber")?.RawValue;
+
+        Assert.Equal("Bangladesh Power Development Board (BPDB)", vendor);
+        Assert.Equal("47912385", billNo);
+        Assert.Equal("2024-05", period);
+        Assert.Equal("120.00", qty);
+        Assert.Equal("kWh", unit);
+        Assert.True(decimal.TryParse(amount, out var parsedAmt) && parsedAmt > 600m, "Amount should be detected correctly");
+        Assert.Equal("250531695", meterNo);
+        Assert.Equal("77383458", consumerNo);
+    }
+
+    [Fact]
+    public void FallbackRuleBasedExtraction_TitasGas_ExtractsGasFields()
+    {
+        var titasOcr = "TITAS GAS TRANSMISSION Bill Month: July 2024 Bill No: TITAS-9988 Amount: 1850 Taka Consumed: 60 m3";
+        var result = GroqLlmExtractor.FallbackRuleBasedExtraction(titasOcr, "titas.pdf");
+
+        Assert.True(result.Success);
+        Assert.Equal("GasBill", result.DetectedDocumentType);
+        Assert.Equal("Titas Gas Transmission and Distribution Company Ltd", result.Fields.First(f => f.FieldName == "Vendor").RawValue);
+        Assert.Equal("m3", result.Fields.First(f => f.FieldName == "Unit").RawValue);
+        Assert.Equal("1850.00", result.Fields.First(f => f.FieldName == "AmountBdt").RawValue);
+        Assert.Equal("60.00", result.Fields.First(f => f.FieldName == "Quantity").RawValue);
+    }
 }
+

@@ -101,7 +101,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         var userAId = Guid.NewGuid();
 
         // 1. Act as Org A: Seed Organization and Invitation
-        _tenantContext.SetContext(orgAId, userAId, Roles.Owner);
+        _tenantContext.SetContext(orgAId, userAId);
         using (var dbA = new IdentityTenancyDbContext(_identityDbOptions, _tenantContext))
         {
             var orgA = new Organization { Id = orgAId, Name = "Org A Textiles", Slug = "org-a", Sector = "RMG" };
@@ -111,9 +111,7 @@ public class TenantIsolationIntegrationTests : IDisposable
             var invA = new Invitation
             {
                 OrgId = orgAId,
-                Role = Roles.FloorStaff,
                 Token = "token-org-a",
-                PinHash = "hash123",
                 ExpiresAtUtc = DateTime.UtcNow.AddDays(7),
                 CreatedByUserId = userAId
             };
@@ -123,9 +121,9 @@ public class TenantIsolationIntegrationTests : IDisposable
 
         // 2. Switch Context to Org B User
         var userBId = Guid.NewGuid();
-        _tenantContext.SetContext(orgBId, userBId, Roles.Owner);
+        _tenantContext.SetContext(orgBId, userBId);
 
-        // 3. Query Invitations as Org B
+        // 3. Query Invitations as Org B -> Org A invitations must NOT be visible
         using (var dbB = new IdentityTenancyDbContext(_identityDbOptions, _tenantContext))
         {
             var invitationsVisibleToB = await dbB.Invitations.ToListAsync();
@@ -142,7 +140,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         var userBId = Guid.NewGuid();
 
         // 1. Act as Org A: Create Invitation
-        _tenantContext.SetContext(orgAId, userAId, Roles.Owner);
+        _tenantContext.SetContext(orgAId, userAId);
         using (var dbA = new IdentityTenancyDbContext(_identityDbOptions, _tenantContext))
         {
             var orgA = new Organization { Id = orgAId, Name = "Org A Textiles", Slug = "org-a-2", Sector = "RMG" };
@@ -151,9 +149,7 @@ public class TenantIsolationIntegrationTests : IDisposable
             var invA = new Invitation
             {
                 OrgId = orgAId,
-                Role = Roles.FloorStaff,
                 Token = "token-org-a-write",
-                PinHash = "hash123",
                 ExpiresAtUtc = DateTime.UtcNow.AddDays(7),
                 CreatedByUserId = userAId
             };
@@ -162,7 +158,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         }
 
         // 2. Switch Context to Org B User
-        _tenantContext.SetContext(orgBId, userBId, Roles.Owner);
+        _tenantContext.SetContext(orgBId, userBId);
 
         // 3. Attempt to insert entity with Org A's ID while active context is Org B -> Throws CrossTenantAccessException
         using (var dbB = new IdentityTenancyDbContext(_identityDbOptions, _tenantContext))
@@ -170,9 +166,7 @@ public class TenantIsolationIntegrationTests : IDisposable
             var maliciousInv = new Invitation
             {
                 OrgId = orgAId, // Mismatched OrgId!
-                Role = Roles.FloorStaff,
                 Token = "malicious-token",
-                PinHash = "hash123",
                 ExpiresAtUtc = DateTime.UtcNow.AddDays(7),
                 CreatedByUserId = userBId
             };
@@ -194,7 +188,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         var userBId = Guid.NewGuid();
 
         // Act as Org A
-        _tenantContext.SetContext(orgAId, userAId, Roles.Owner);
+        _tenantContext.SetContext(orgAId, userAId);
         using (var onbDbA = new OnboardingDbContext(_onbDbOptions, _tenantContext))
         {
             var siteA = new Site { OrgId = orgAId, Name = "Site A Savar" };
@@ -207,7 +201,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         }
 
         // Switch to Org B
-        _tenantContext.SetContext(orgBId, userBId, Roles.Owner);
+        _tenantContext.SetContext(orgBId, userBId);
         using (var onbDbB = new OnboardingDbContext(_onbDbOptions, _tenantContext))
         {
             var sitesB = await onbDbB.Sites.ToListAsync();
@@ -227,7 +221,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         var userBId = Guid.NewGuid();
 
         // Act as Org A
-        _tenantContext.SetContext(orgAId, userAId, Roles.Owner);
+        _tenantContext.SetContext(orgAId, userAId);
         using (var unitsDbA = new ActivityUnitsDbContext(_unitsDbOptions, _tenantContext))
         using (var calcDbA = new CalculationDbContext(_calcDbOptions, _tenantContext))
         {
@@ -264,7 +258,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         }
 
         // Switch to Org B
-        _tenantContext.SetContext(orgBId, userBId, Roles.Owner);
+        _tenantContext.SetContext(orgBId, userBId);
         using (var unitsDbB = new ActivityUnitsDbContext(_unitsDbOptions, _tenantContext))
         using (var calcDbB = new CalculationDbContext(_calcDbOptions, _tenantContext))
         {
@@ -284,7 +278,7 @@ public class TenantIsolationIntegrationTests : IDisposable
         var userAId = Guid.NewGuid();
 
         // Act as Org A
-        _tenantContext.SetContext(orgAId, userAId, Roles.Owner);
+        _tenantContext.SetContext(orgAId, userAId);
         using (var auditDbA = new AuditDbContext(_auditDbOptions, _tenantContext))
         {
             var log = new AuditLog
@@ -303,7 +297,7 @@ public class TenantIsolationIntegrationTests : IDisposable
 
         // Switch to Org B
         var userBId = Guid.NewGuid();
-        _tenantContext.SetContext(orgBId, userBId, Roles.Owner);
+        _tenantContext.SetContext(orgBId, userBId);
 
         using (var auditDbB = new AuditDbContext(_auditDbOptions, _tenantContext))
         {

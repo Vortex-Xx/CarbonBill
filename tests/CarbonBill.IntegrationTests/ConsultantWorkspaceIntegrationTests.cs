@@ -120,8 +120,8 @@ public class ConsultantWorkspaceIntegrationTests : IDisposable
             var orgB = new Organization { Id = orgBId, Name = "Gazipur Apparels Ltd", Slug = "gazipur-apparels", Sector = "RMG" };
             identityDb.Organizations.AddRange(orgA, orgB);
 
-            var memberA = new Membership { UserId = consultantUserId, OrgId = orgAId, Role = Roles.Consultant };
-            var memberB = new Membership { UserId = consultantUserId, OrgId = orgBId, Role = Roles.Consultant };
+            var memberA = new Membership { UserId = consultantUserId, OrgId = orgAId };
+            var memberB = new Membership { UserId = consultantUserId, OrgId = orgBId };
             identityDb.Memberships.AddRange(memberA, memberB);
 
             await identityDb.SaveChangesAsync();
@@ -167,7 +167,7 @@ public class ConsultantWorkspaceIntegrationTests : IDisposable
         }
 
         // 4. Consultant acts on Org A -> Applies custom solar-adjusted factor override (0.450 kg CO2e/kWh)
-        _tenantContext.SetContext(orgAId, consultantUserId, Roles.Consultant);
+        _tenantContext.SetContext(orgAId, consultantUserId);
         using (var factorDbA = new FactorRegistryDbContext(_factorDbOptions, _tenantContext))
         {
             var factorOverride = new FactorOverride
@@ -202,7 +202,7 @@ public class ConsultantWorkspaceIntegrationTests : IDisposable
         }
 
         // 6. Execute Calculation Pipeline for Org A (10,000 kWh -> 4,500 kg CO2e)
-        _tenantContext.SetContext(orgAId, consultantUserId, Roles.Consultant);
+        _tenantContext.SetContext(orgAId, consultantUserId);
         using (var calcDbA = new CalculationDbContext(_calcDbOptions, _tenantContext))
         using (var unitsDbA = new ActivityUnitsDbContext(_unitsDbOptions, _tenantContext))
         using (var factorDbA = new FactorRegistryDbContext(_factorDbOptions, _tenantContext))
@@ -236,7 +236,7 @@ public class ConsultantWorkspaceIntegrationTests : IDisposable
         }
 
         // 7. Execute Calculation Pipeline for Org B (10,000 kWh -> 6,210 kg CO2e)
-        _tenantContext.SetContext(orgBId, consultantUserId, Roles.Consultant);
+        _tenantContext.SetContext(orgBId, consultantUserId);
         using (var calcDbB = new CalculationDbContext(_calcDbOptions, _tenantContext))
         using (var unitsDbB = new ActivityUnitsDbContext(_unitsDbOptions, _tenantContext))
         using (var factorDbB = new FactorRegistryDbContext(_factorDbOptions, _tenantContext))

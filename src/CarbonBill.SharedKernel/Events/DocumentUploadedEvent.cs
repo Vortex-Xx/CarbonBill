@@ -12,4 +12,5 @@ public record DocumentUploadedEvent(
     Guid? SiteId = null,
     Guid? AssetId = null,
     string? DocType = null,
-    string? BillingPeriod = null) : IDomainEvent;
+    string? BillingPeriod = null,
+    string? FileName = null) : IDomainEvent;

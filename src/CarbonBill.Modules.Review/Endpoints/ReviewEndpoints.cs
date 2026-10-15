@@ -55,13 +55,11 @@ public static class ReviewEndpoints
             [FromBody] ConfirmDocumentRequest request,
             IReviewService reviewService,
             ITenantContext tenantContext,
-            ClaimsPrincipal principal,
             CancellationToken ct) =>
         {
             var userId = tenantContext.CurrentUserId ?? Guid.Empty;
-            var role = tenantContext.CurrentRole ?? principal.FindFirst(ClaimTypes.Role)?.Value;
 
-            var result = await reviewService.ConfirmDocumentAsync(id, request, userId, role, ct);
+            var result = await reviewService.ConfirmDocumentAsync(id, request, userId, ct);
             if (!result.IsSuccess)
             {
                 return Results.Problem(
@@ -78,13 +76,11 @@ public static class ReviewEndpoints
             [FromBody] BulkConfirmRequest request,
             IReviewService reviewService,
             ITenantContext tenantContext,
-            ClaimsPrincipal principal,
             CancellationToken ct) =>
         {
             var userId = tenantContext.CurrentUserId ?? Guid.Empty;
-            var role = tenantContext.CurrentRole ?? principal.FindFirst(ClaimTypes.Role)?.Value;
 
-            var result = await reviewService.BulkConfirmAsync(request, userId, role, ct);
+            var result = await reviewService.BulkConfirmAsync(request, userId, ct);
             return Results.Ok(result);
         }).AllowAnonymous();
 

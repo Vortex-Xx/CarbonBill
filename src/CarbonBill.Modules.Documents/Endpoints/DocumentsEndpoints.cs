@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CarbonBill.Modules.Documents.Domain;
 using CarbonBill.Modules.Documents.Services;
 using CarbonBill.SharedKernel.Tenancy;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -197,6 +198,69 @@ public static class DocumentsEndpoints
             var userId = tenantContext.CurrentUserId ?? Guid.Empty;
             var items = await documentService.GetMySubmissionsAsync(userId, limit ?? 20, ct);
             return Results.Ok(items);
+        })
+        .AllowAnonymous();
+
+        // POST /api/v1/documents/{id}/reprocess
+        group.MapPost("/{id:guid}/reprocess", async (
+            Guid id,
+            CarbonBill.SharedKernel.Providers.IFileStore fileStore,
+            CarbonBill.SharedKernel.Events.IDomainEventPublisher eventPublisher,
+            CarbonBill.Modules.Documents.Persistence.DocumentsDbContext dbContext,
+            CancellationToken ct) =>
+        {
+            var doc = await dbContext.Documents.IgnoreQueryFilters().FirstOrDefaultAsync(d => d.Id == id, ct);
+            if (doc == null) return Results.NotFound(new { error = "Document not found." });
+
+            await eventPublisher.PublishAsync(new CarbonBill.SharedKernel.Events.DocumentUploadedEvent(
+                doc.Id,
+                doc.OrgId,
+                doc.StoragePath,
+                doc.ContentType,
+                doc.Source,
+                DateTime.UtcNow,
+                DocType: doc.DocType,
+                FileName: doc.FileName), ct);
+
+            return Results.Ok(new { success = true, documentId = doc.Id, status = "ReprocessTriggered" });
+        })
+        .AllowAnonymous();
+
+        // DELETE /api/v1/documents/{id:guid}
+        group.MapDelete("/{id:guid}", async (
+            Guid id,
+            CarbonBill.Modules.Documents.Persistence.DocumentsDbContext dbContext,
+            CancellationToken ct) =>
+        {
+            var doc = await dbContext.Documents.IgnoreQueryFilters().FirstOrDefaultAsync(d => d.Id == id, ct);
+            if (doc == null)
+            {
+                return Results.NotFound(new { message = "Document not found." });
+            }
+
+            var conn = dbContext.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open)
+            {
+                await conn.OpenAsync(ct);
+            }
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                DELETE FROM ExtractedFields WHERE DocumentId = @id;
+                DELETE FROM ExtractionRuns WHERE DocumentId = @id;
+                DELETE FROM Decisions WHERE DocumentId = @id;
+                DELETE FROM EmissionResults WHERE DocumentId = @id;
+                DELETE FROM ActivityRecords WHERE DocumentId = @id;
+                DELETE FROM DocumentPages WHERE DocumentId = @id;
+                DELETE FROM Documents WHERE Id = @id;
+            ";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "@id";
+            p.Value = id;
+            cmd.Parameters.Add(p);
+            await cmd.ExecuteNonQueryAsync(ct);
+
+            return Results.Ok(new { success = true, id });
         })
         .AllowAnonymous();
 

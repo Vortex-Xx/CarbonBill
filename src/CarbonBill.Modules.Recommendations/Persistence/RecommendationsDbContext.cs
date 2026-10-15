@@ -57,7 +57,7 @@ public class RecommendationsDbContext(
 
         modelBuilder.Entity<FacilityProfile>(entity =>
         {
-            entity.ToTable("FacilityProfiles");
+            entity.ToTable("RecommendationFacilityProfiles");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Sector).HasMaxLength(50).IsRequired();
             entity.Property(e => e.BuildingOwnership).HasMaxLength(50).IsRequired();

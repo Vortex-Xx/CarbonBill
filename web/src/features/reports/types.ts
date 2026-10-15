@@ -36,3 +36,17 @@ export interface ReportItem {
   readinessChecklist: ReportReadinessData;
   activeShareLinks: ShareLinkInfo[];
 }
+
+export type ReportDuration = 'last_1_month' | 'last_3_months' | 'last_6_months' | 'full_year_2026';
+
+export interface DurationOption {
+  key: ReportDuration;
+  labelEn: string;
+  labelBn: string;
+  periodCode: string;
+  dateRangeDescEn: string;
+  dateRangeDescBn: string;
+  normStandardEn: string;
+  normStandardBn: string;
+  monthsCount: number;
+}

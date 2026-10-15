@@ -49,7 +49,7 @@ public sealed class EndToEndPipelineIntegrationTests : IDisposable
         _connection.Open();
 
         _tenantContext = new TenantContext();
-        _tenantContext.SetContext(_testOrgId, _testUserId, "FloorStaff");
+        _tenantContext.SetContext(_testOrgId, _testUserId);
 
         _pragmaInterceptor = new SqlitePragmaInterceptor();
         _tenantInterceptor = new TenantSaveChangesInterceptor(_tenantContext);
@@ -204,8 +204,8 @@ public sealed class EndToEndPipelineIntegrationTests : IDisposable
         doc.DocType = "DieselSlip";
         await _documentsDb.SaveChangesAsync();
 
-        // 3. ACCOUNTANT REVIEW QUEUE
-        _tenantContext.SetContext(_testOrgId, _testUserId, "Accountant");
+        // 3. REVIEW QUEUE
+        _tenantContext.SetContext(_testOrgId, _testUserId);
         var queue = await _reviewService.GetReviewQueueAsync(docType: null, siteId: null);
         Assert.Contains(queue, q => q.DocumentId == docReceipt.Id);
 
@@ -228,9 +228,8 @@ public sealed class EndToEndPipelineIntegrationTests : IDisposable
                 OverrideQuantity: 1250m,
                 OverrideUnit: "litre",
                 OverridePeriod: "2024-11",
-                Notes: "Approved by Accountant Rahim"),
-            _testUserId,
-            userRole: "Accountant");
+                Notes: "Approved by Member Rahim"),
+            _testUserId);
 
         Assert.True(confirmResult.IsSuccess);
 
@@ -298,7 +297,7 @@ public sealed class EndToEndPipelineIntegrationTests : IDisposable
         Assert.Equal(DocumentStatuses.NeedsReview, doc.Status);
 
         // Direct confirmation works
-        _tenantContext.SetContext(_testOrgId, _testUserId, "Accountant");
+        _tenantContext.SetContext(_testOrgId, _testUserId);
         var confirmResult = await _reviewService.ConfirmDocumentAsync(
             doc.Id,
             new ConfirmDocumentRequest(
@@ -307,8 +306,7 @@ public sealed class EndToEndPipelineIntegrationTests : IDisposable
                 OverrideUnit: "litre",
                 OverridePeriod: "2024-10",
                 Notes: "Manual fallback approved"),
-            _testUserId,
-            userRole: "Accountant");
+            _testUserId);
 
         Assert.True(confirmResult.IsSuccess);
 

@@ -11,7 +11,6 @@ import { DashboardFeature } from './DashboardFeature';
 export const dashboardRoutes = [
   {
     path: '/dashboard',
-    role: 'Owner',
     component: DashboardFeature,
   },
 ];

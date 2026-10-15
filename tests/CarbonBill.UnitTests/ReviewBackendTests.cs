@@ -40,7 +40,7 @@ public sealed class ReviewBackendTests : IDisposable
         _audOptions = new DbContextOptionsBuilder<AuditDbContext>().UseSqlite(_connection).Options;
 
         _tenantContext = new TenantContext();
-        _tenantContext.SetContext(_orgId, _userId, "Accountant");
+        _tenantContext.SetContext(_orgId, _userId);
 
         using var docDb = new DocumentsDbContext(_docOptions, _tenantContext);
         docDb.Database.EnsureCreated();
@@ -59,7 +59,7 @@ public sealed class ReviewBackendTests : IDisposable
     }
 
     [Fact]
-    public async Task ConfirmDocument_WhenUserIsFloorStaff_ReturnsForbiddenError()
+    public async Task ConfirmDocument_AnyAuthenticatedMember_CanAttemptConfirmation()
     {
         // Arrange
         using var docDb = new DocumentsDbContext(_docOptions, _tenantContext);
@@ -73,16 +73,15 @@ public sealed class ReviewBackendTests : IDisposable
 
         var docId = Guid.NewGuid();
 
-        // Act
+        // Act - Any authenticated member can attempt confirmation (returns not found if doc doesn't exist)
         var result = await reviewService.ConfirmDocumentAsync(
             docId,
             new ConfirmDocumentRequest(),
-            _userId,
-            userRole: "FloorStaff");
+            _userId);
 
         // Assert
         Assert.False(result.IsSuccess);
-        Assert.Contains("Floor staff", result.Error);
+        Assert.Contains("not found", result.Error);
     }
 
     [Fact]
@@ -172,7 +171,7 @@ public sealed class ReviewBackendTests : IDisposable
         var reviewService = new ReviewService(revDb, docDb, extDb, failingActivityWriter, auditService, _tenantContext, NullLogger<ReviewService>.Instance);
 
         // Act
-        var result = await reviewService.ConfirmDocumentAsync(doc.Id, new ConfirmDocumentRequest(), _userId, "Accountant");
+        var result = await reviewService.ConfirmDocumentAsync(doc.Id, new ConfirmDocumentRequest(), _userId);
 
         // Assert
         Assert.False(result.IsSuccess);
@@ -232,8 +231,7 @@ public sealed class ReviewBackendTests : IDisposable
         var result = await reviewService.ConfirmDocumentAsync(
             primaryDoc.Id,
             new ConfirmDocumentRequest(ResolveDuplicateWithDocId: dupeDoc.Id),
-            _userId,
-            "Accountant");
+            _userId);
 
         // Assert
         Assert.True(result.IsSuccess);

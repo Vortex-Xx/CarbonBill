@@ -38,7 +38,6 @@ public class GapDetectionDbContext(
 
             // Global Query Filter for Tenancy Isolation
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });

@@ -46,19 +46,59 @@ public class ExtractionService(
         var orgId = tenantContext.CurrentOrgId;
         if (!orgId.HasValue)
         {
-            return Result.Failure<ExtractionRun>("Active Organization ID is required.");
+            try
+            {
+                var conn = dbContext.Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync(ct);
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT OrgId FROM Documents WHERE Id = '" + documentId + "' LIMIT 1;";
+                var docOrg = await cmd.ExecuteScalarAsync(ct);
+                if (docOrg != null && Guid.TryParse(docOrg.ToString(), out var parsedDocOrg))
+                {
+                    orgId = parsedDocOrg;
+                }
+                else
+                {
+                    cmd.CommandText = "SELECT Id FROM Organizations WHERE IsActive = 1 LIMIT 1;";
+                    var scalar = await cmd.ExecuteScalarAsync(ct);
+                    if (scalar != null && Guid.TryParse(scalar.ToString(), out var parsed))
+                    {
+                        orgId = parsed;
+                    }
+                }
+            }
+            catch { }
+
+            orgId ??= await dbContext.ExtractionRuns.Select(r => (Guid?)r.OrgId).FirstOrDefaultAsync(ct);
+            if (orgId.HasValue)
+            {
+                tenantContext.SetContext(orgId.Value, Guid.Empty);
+            }
+            else
+            {
+                return Result.Failure<ExtractionRun>("Active Organization ID could not be determined for document.");
+            }
         }
 
         logger.LogInformation("Processing extraction pipeline for Document {DocumentId}...", documentId);
 
-        // 1. Dual OCR (Option C: Tesseract / PaddleOCR)
-        var rawOcrText = await dualOcrEngine.ExtractRawTextAsync(documentStream, fileName, contentType, ct);
+        using var ms = new MemoryStream();
+        if (documentStream.CanSeek && documentStream.Position > 0)
+        {
+            documentStream.Position = 0;
+        }
+        await documentStream.CopyToAsync(ms, ct);
+        var documentBytes = ms.ToArray();
+        ms.Position = 0;
+
+        // 1. Dual OCR (Option C: Tesseract / PaddleOCR / Windows OCR)
+        var rawOcrText = await dualOcrEngine.ExtractRawTextAsync(ms, fileName, contentType, ct);
 
         // 2. Classify Document Type
         var classification = DocumentClassifier.Classify(rawOcrText, fileName);
 
-        // 3. Groq LLM Semantic Intelligence (openai/gpt-oss-120b) with consent gating
-        var groqResult = await groqExtractor.ExtractAsync(rawOcrText, fileName, contentType, hasTier3Consent, ct);
+        // 3. Groq LLM / Vision Semantic Intelligence with consent gating
+        var groqResult = await groqExtractor.ExtractAsync(rawOcrText, fileName, contentType, hasTier3Consent, documentBytes, ct);
 
         // 4. Save ExtractionRun and ExtractedFields
         var extractionRunId = Guid.NewGuid();

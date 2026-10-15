@@ -1,4 +1,4 @@
-import { Recommendation, RecommendationStatus } from './types';
+import { Recommendation, RecommendationStatus, EvidenceGrade } from './types';
 import { apiFetch } from '../../lib/apiClient';
 
 export const mockRecommendationsList: Recommendation[] = [
@@ -116,10 +116,83 @@ export const mockRecommendationsList: Recommendation[] = [
 
 let inMemoryRecommendations = [...mockRecommendationsList];
 
+function mapDtoToRecommendation(dto: any): Recommendation {
+  if (dto.titleBn && dto.savingsBdtRange) {
+    return dto;
+  }
+
+  const capexLow = Number(dto.capexLow ?? dto.capexBdtRange?.low ?? 0);
+  const capexHigh = Number(dto.capexHigh ?? dto.capexBdtRange?.high ?? 0);
+  const capexTypical = Number(dto.capexBdtRange?.typical ?? (capexLow + capexHigh) / 2);
+
+  const savingsLow = Number(dto.savingsBdtLow ?? dto.savingsBdtRange?.low ?? 0);
+  const savingsTypical = Number(dto.savingsBdtTypical ?? dto.savingsBdtRange?.typical ?? 0);
+  const savingsHigh = Number(dto.savingsBdtHigh ?? dto.savingsBdtRange?.high ?? 0);
+
+  const tco2eLow = Number(dto.tco2eAvoidedLow ?? dto.tco2eAvoidedRange?.low ?? 0);
+  const tco2eTypical = Number(dto.tco2eAvoidedTypical ?? dto.tco2eAvoidedRange?.typical ?? 0);
+  const tco2eHigh = Number(dto.tco2eAvoidedHigh ?? dto.tco2eAvoidedRange?.high ?? 0);
+
+  const paybackMonths = Number(dto.paybackYears ?? 0) * 12;
+
+  return {
+    id: String(dto.id),
+    measureCode: dto.measureCode || '',
+    titleBn: dto.nameBn || dto.titleBn || '',
+    titleEn: dto.nameEn || dto.titleEn || '',
+    category: dto.category || 'Electricity',
+    evidenceGrade: (dto.evidenceGrade || 'A') as EvidenceGrade,
+    sourceCitation: dto.sourceCitation || '',
+    sourceUrl: dto.sourceUrl || '',
+    applicabilityBn: dto.explanationBn || dto.applicabilityBn || '',
+    applicabilityEn: dto.explanationEn || dto.applicabilityEn || '',
+    assumptionsBn: dto.assumptionsBn || '',
+    assumptionsEn: dto.assumptionsEn || '',
+    savingsBdtRange: {
+      low: savingsLow,
+      typical: savingsTypical,
+      high: savingsHigh,
+    },
+    capexBdtRange: {
+      low: capexLow,
+      typical: capexTypical,
+      high: capexHigh,
+    },
+    paybackMonthsRange: dto.paybackMonthsRange ?? {
+      low: Math.max(0.1, Number((paybackMonths * 0.8).toFixed(1))),
+      typical: Math.max(0.1, Number(paybackMonths.toFixed(1))),
+      high: Math.max(0.1, Number((paybackMonths * 1.2).toFixed(1))),
+    },
+    tco2eAvoidedRange: {
+      low: tco2eLow,
+      typical: tco2eTypical,
+      high: tco2eHigh,
+    },
+    costPerTco2e: Number(dto.costPerTco2e ?? 0),
+    status: (dto.status || 'Suggested') as RecommendationStatus,
+    statusReason: dto.statusReason || undefined,
+    financingNoteBn: dto.financingNoteBn || '',
+    financingNoteEn: dto.financingNoteEn || '',
+    realisedSavingBdt: dto.realisedSavingBdt ? Number(dto.realisedSavingBdt) : undefined,
+  };
+}
+
 export async function fetchRecommendations(): Promise<Recommendation[]> {
   try {
-    const data = await apiFetch<Recommendation[]>('/api/v1/recommendations');
-    return data;
+    const data = await apiFetch<any>('/api/v1/recommendations');
+    let rawList: any[] = [];
+    if (Array.isArray(data)) {
+      rawList = data;
+    } else if (data && Array.isArray(data.all)) {
+      rawList = data.all;
+    } else if (data && Array.isArray(data.top5)) {
+      rawList = data.top5;
+    }
+
+    if (rawList.length > 0) {
+      return rawList.map(mapDtoToRecommendation);
+    }
+    return inMemoryRecommendations;
   } catch {
     return inMemoryRecommendations;
   }

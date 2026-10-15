@@ -37,7 +37,6 @@ public class CalculationDbContext : DbContext
 
             entity.HasQueryFilter(e =>
                 _tenantContext == null ||
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });
@@ -54,7 +53,6 @@ public class CalculationDbContext : DbContext
 
             entity.HasQueryFilter(e =>
                 _tenantContext == null ||
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });

@@ -33,3 +33,5 @@ scratch/
 *.env
 appsettings.Local.json
 appsettings.*.Local.json
+.ocr-venv/
+*tessdata/

@@ -40,7 +40,7 @@ public sealed class TrackATests : IDisposable
         _connection.Open();
 
         _tenantContext = new TenantContext();
-        _tenantContext.SetContext(_orgId, _userId, "Owner");
+        _tenantContext.SetContext(_orgId, _userId);
 
         var unitsOptions = new DbContextOptionsBuilder<ActivityUnitsDbContext>().UseSqlite(_connection).Options;
         var factorOptions = new DbContextOptionsBuilder<FactorRegistryDbContext>().UseSqlite(_connection).Options;

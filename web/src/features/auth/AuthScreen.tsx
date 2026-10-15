@@ -10,8 +10,7 @@ interface LoginResponse {
   fullName: string;
   activeOrgId: string;
   activeOrgName: string;
-  activeRole: string;
-  memberships: Array<{ orgId: string; orgName: string; role: string }>;
+  memberships: Array<{ orgId: string; orgName: string }>;
 }
 
 export const AuthScreen: React.FC = () => {
@@ -21,16 +20,14 @@ export const AuthScreen: React.FC = () => {
   const [email, setEmail] = useState('accountant@apex.local');
   const [password, setPassword] = useState('Pass1234!');
   
-  // Floor Staff QR + PIN State
+  // Teammate Invite State
   const [inviteToken, setInviteToken] = useState('apex-floor-demo');
   const [pin, setPin] = useState('1234');
   const [fullName, setFullName] = useState('Jahid Hasan');
   
-  // Kiosk Terminal Lock State (Prompt I9 Usability / Phase 3 Follow-up)
+  // Kiosk Terminal Lock State
   const [kioskPin, setKioskPin] = useState('');
-  const [isKioskLockedMode, setIsKioskLockedMode] = useState(() => {
-    return localStorage.getItem('carbonbill_kiosk_locked') === 'true';
-  });
+  const [isKioskLockedMode, setIsKioskLockedMode] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +50,11 @@ export const AuthScreen: React.FC = () => {
         fullName: res.fullName,
         activeOrgId: res.activeOrgId,
         activeOrgName: res.activeOrgName,
-        activeRole: res.activeRole,
         memberships: res.memberships,
       };
 
       setSession(res.accessToken, user);
-      window.location.href = res.activeRole === 'FloorStaff' ? '/capture' : '/dashboard';
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'লগইন ব্যর্থ হয়েছে। ইমেইল এবং পাসওয়ার্ড যাচাই করুন।');
     } finally {
@@ -78,7 +74,6 @@ export const AuthScreen: React.FC = () => {
         userId: string;
         fullName: string;
         orgId: string;
-        role: string;
       }>('/api/v1/auth/join', {
         token: inviteToken,
         pin,
@@ -87,16 +82,15 @@ export const AuthScreen: React.FC = () => {
 
       const user: AuthUser = {
         userId: res.userId,
-        email: `floor_${inviteToken}@carbonbill.local`,
+        email: `teammate_${inviteToken}@carbonbill.local`,
         fullName: res.fullName,
         activeOrgId: res.orgId,
         activeOrgName: 'Apex Textile & Garments Ltd.',
-        activeRole: res.role,
-        memberships: [{ orgId: res.orgId, orgName: 'Apex Textile & Garments Ltd.', role: res.role }],
+        memberships: [{ orgId: res.orgId, orgName: 'Apex Textile & Garments Ltd.' }],
       };
 
       setSession(res.accessToken, user);
-      window.location.href = '/capture';
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'কিউআর জয়েন ব্যর্থ হয়েছে। পিন যাচাই করুন।');
     } finally {

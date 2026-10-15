@@ -47,8 +47,7 @@ export const ConsultantWorkspace: React.FC = () => {
         accessToken: string;
         activeOrgId: string;
         activeOrgName: string;
-        activeRole: string;
-        memberships: Array<{ orgId: string; orgName: string; role: string }>;
+        memberships: Array<{ orgId: string; orgName: string }>;
       }>('/api/v1/auth/switch-org', { targetOrgId });
 
       if (user) {
@@ -56,7 +55,6 @@ export const ConsultantWorkspace: React.FC = () => {
           ...user,
           activeOrgId: res.activeOrgId,
           activeOrgName: res.activeOrgName,
-          activeRole: res.activeRole,
           memberships: res.memberships,
         };
         setSession(res.accessToken, updatedUser);
@@ -111,7 +109,7 @@ export const ConsultantWorkspace: React.FC = () => {
           >
             {user?.memberships?.map(m => (
               <option key={m.orgId} value={m.orgId}>
-                {m.orgName} ({m.role})
+                {m.orgName}
               </option>
             ))}
           </select>

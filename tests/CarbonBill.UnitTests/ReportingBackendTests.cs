@@ -29,7 +29,7 @@ public class ReportingBackendTests
         connection.Open();
 
         var tenantContext = new TenantContext();
-        tenantContext.SetContext(orgId, Guid.NewGuid(), "Compliance");
+        tenantContext.SetContext(orgId, Guid.NewGuid());
 
         var options = new DbContextOptionsBuilder<ReportingDbContext>()
             .UseSqlite(connection)

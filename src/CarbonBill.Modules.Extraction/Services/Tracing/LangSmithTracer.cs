@@ -7,22 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CarbonBill.Modules.Extraction.Services.Tracing;
 
-public interface ILangSmithTracer
-{
-    bool IsEnabled { get; }
-    Task<string?> TraceRunAsync(
-        string name,
-        string runType,
-        object inputs,
-        object? outputs,
-        DateTime startTimeUtc,
-        DateTime endTimeUtc,
-        Dictionary<string, object>? metadata = null,
-        string? errorMessage = null,
-        CancellationToken ct = default);
-}
-
-public sealed class LangSmithTracer : ILangSmithTracer
+public sealed class LangSmithTracer : CarbonBill.SharedKernel.Providers.ILangSmithTracer
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -53,17 +38,63 @@ public sealed class LangSmithTracer : ILangSmithTracer
 
         _isEnabled = string.Equals(tracingSetting, "true", StringComparison.OrdinalIgnoreCase);
 
-        _endpoint = configuration["LANGSMITH_ENDPOINT"]
-            ?? configuration["LangSmith:Endpoint"]
-            ?? "https://api.smith.langchain.com";
+        string? ep = configuration["LANGSMITH_ENDPOINT"];
+        if (string.IsNullOrWhiteSpace(ep)) ep = configuration["LangSmith:Endpoint"];
+        if (string.IsNullOrWhiteSpace(ep)) ep = Environment.GetEnvironmentVariable("LANGSMITH_ENDPOINT");
+        _endpoint = !string.IsNullOrWhiteSpace(ep) ? ep : "https://api.smith.langchain.com";
 
-        _apiKey = configuration["LANGSMITH_API_KEY"]
-            ?? configuration["LangSmith:ApiKey"]
-            ?? string.Empty;
+        string? key = configuration["LANGSMITH_API_KEY"];
+        if (string.IsNullOrWhiteSpace(key)) key = configuration["LangSmith:ApiKey"];
+        if (string.IsNullOrWhiteSpace(key)) key = Environment.GetEnvironmentVariable("LANGSMITH_API_KEY");
+        if (string.IsNullOrWhiteSpace(key) && configuration["LANGSMITH_API_KEY"] == null)
+        {
+            key = ReadFromDotEnv("LANGSMITH_API_KEY");
+        }
+        _apiKey = key ?? string.Empty;
 
-        _project = configuration["LANGSMITH_PROJECT"]
-            ?? configuration["LangSmith:Project"]
-            ?? "CarbonBill";
+        string? proj = configuration["LANGSMITH_PROJECT"];
+        if (string.IsNullOrWhiteSpace(proj)) proj = configuration["LangSmith:Project"];
+        if (string.IsNullOrWhiteSpace(proj)) proj = Environment.GetEnvironmentVariable("LANGSMITH_PROJECT");
+        _project = !string.IsNullOrWhiteSpace(proj) ? proj : "CarbonBill";
+
+        if (IsEnabled)
+        {
+            _logger.LogInformation("LangSmith tracking active. Traces will be emitted to project '{Project}' at {Endpoint}.", _project, _endpoint);
+        }
+        else
+        {
+            _logger.LogWarning("LangSmith tracking disabled or API key missing.");
+        }
+    }
+
+    private static string? ReadFromDotEnv(string key)
+    {
+        try
+        {
+            var dir = Directory.GetCurrentDirectory();
+            while (!string.IsNullOrEmpty(dir))
+            {
+                var envPath = Path.Combine(dir, ".env");
+                if (File.Exists(envPath))
+                {
+                    foreach (var line in File.ReadAllLines(envPath))
+                    {
+                        var trimmed = line.Trim();
+                        if (trimmed.StartsWith($"{key}=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return trimmed[(key.Length + 1)..].Trim();
+                        }
+                    }
+                }
+                var parent = Directory.GetParent(dir);
+                dir = parent?.FullName;
+            }
+        }
+        catch
+        {
+            // Ignore file read exceptions
+        }
+        return null;
     }
 
     public async Task<string?> TraceRunAsync(

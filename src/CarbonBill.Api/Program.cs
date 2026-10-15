@@ -37,6 +37,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
+// Load .env if present in current directory or parents
+LoadDotEnv();
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddEnvironmentVariables();
@@ -207,6 +210,15 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Execute CLI seed command if --seed argument is passed
+if (args.Contains("--seed"))
+{
+    Log.Information("CarbonBill CLI --seed flag detected. Loading versioned platform datasets...");
+    await DataSeeder.SeedDevelopmentDataAsync(app.Services);
+    Log.Information("Versioned platform datasets successfully loaded. Exiting process.");
+    return;
+}
+
 // Seed Database in Development
 if (app.Environment.IsDevelopment())
 {
@@ -305,3 +317,33 @@ app.MapRecommendationsModuleEndpoints();
 app.MapReportingModuleEndpoints();
 
 app.Run();
+
+static void LoadDotEnv()
+{
+    var dir = Directory.GetCurrentDirectory();
+    while (!string.IsNullOrEmpty(dir))
+    {
+        var envFile = Path.Combine(dir, ".env");
+        if (File.Exists(envFile))
+        {
+            foreach (var line in File.ReadAllLines(envFile))
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#')) continue;
+                var eqIdx = trimmed.IndexOf('=');
+                if (eqIdx > 0)
+                {
+                    var k = trimmed[..eqIdx].Trim();
+                    var v = trimmed[(eqIdx + 1)..].Trim();
+                    if (!string.IsNullOrEmpty(k) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable(k)))
+                    {
+                        Environment.SetEnvironmentVariable(k, v);
+                    }
+                }
+            }
+            break;
+        }
+        var parent = Directory.GetParent(dir);
+        dir = parent?.FullName;
+    }
+}

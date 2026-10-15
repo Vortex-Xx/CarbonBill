@@ -154,3 +154,128 @@ export function getPdfDownloadUrl(id: string, lang: 'bn' | 'en' = 'en', redactPr
 export function getExcelDownloadUrl(id: string, redactPrices: boolean = false): string {
   return `/api/v1/reports/${encodeURIComponent(id)}/excel?redactPrices=${redactPrices}`;
 }
+
+export const REPORT_DURATIONS = [
+  {
+    key: 'last_1_month' as const,
+    labelEn: 'Last 1 Month',
+    labelBn: 'বিগত ১ মাস',
+    periodCode: '2026-09',
+    dateRangeDescEn: 'Sep 1 – Sep 30, 2026 (Monthly Reconciliation)',
+    dateRangeDescBn: '১ সেপ্টেম্বর – ৩০ সেপ্টেম্বর, ২০২৬ (মাসিক মিলকরণ)',
+    normStandardEn: 'Monthly Utility & SREDA Reconciliation',
+    normStandardBn: 'মাসিক ইউটিলিটি ও স্রেডা পর্যবেক্ষণ',
+    monthsCount: 1,
+  },
+  {
+    key: 'last_3_months' as const,
+    labelEn: 'Last 3 Months / Q3',
+    labelBn: 'বিগত ৩ মাস / ৩য় প্রান্তিক',
+    periodCode: '2026-Q3',
+    dateRangeDescEn: 'Jul 1 – Sep 30, 2026 (Quarterly Audit)',
+    dateRangeDescBn: '১ জুলাই – ৩০ সেপ্টেম্বর, ২০২৬ (ত্রৈমাসিক অডিট)',
+    normStandardEn: 'EU CBAM Quarterly Declaration & Higg FEM 4.0 Standard',
+    normStandardBn: 'ইইউ সিবিএএম ও হিগ ফেম ৪.০ ত্রৈমাসিক মানদণ্ড',
+    monthsCount: 3,
+  },
+  {
+    key: 'last_6_months' as const,
+    labelEn: 'Last 6 Months / H1',
+    labelBn: 'বিগত ৬ মাস / অর্ধবার্ষিক',
+    periodCode: '2026-H1',
+    dateRangeDescEn: 'Apr 1 – Sep 30, 2026 (Semi-Annual Verification)',
+    dateRangeDescBn: '১ এপ্রিল – ৩০ সেপ্টেম্বর, ২০২৬ (অর্ধবার্ষিক যাচাই)',
+    normStandardEn: 'Inditex & H&M Half-Year Supplier ESG Review',
+    normStandardBn: 'ইন্ডিটেক্স ও এইচঅ্যান্ডএম অর্ধবার্ষিক অডিট',
+    monthsCount: 6,
+  },
+  {
+    key: 'full_year_2026' as const,
+    labelEn: 'Full Year 2026 (Annual)',
+    labelBn: 'সম্পূর্ণ বছর ২০২৬ (বার্ষিক)',
+    periodCode: '2026-FY',
+    dateRangeDescEn: 'Jan 1 – Dec 31, 2026 (Annual Corporate Inventory)',
+    dateRangeDescBn: '১ জানুয়ারি – ৩১ ডিসেম্বর, ২০২৬ (বার্ষিক ইনভেন্টরি)',
+    normStandardEn: 'GHG Protocol Corporate Standard & CDP Annual Disclosure',
+    normStandardBn: 'জিএইচজি প্রোটোকল কর্পোরেট স্ট্যান্ডার্ড ও সিডিপি বার্ষিক প্রকাশ',
+    monthsCount: 12,
+  },
+];
+
+export function exportAuditLedgerToCsv(
+  items: Array<{
+    scope: string;
+    sourceNameEn: string;
+    division?: string;
+    billCompany?: string;
+    billNumber?: string;
+    meterNumber?: string;
+    activityQuantity: number;
+    activityUnit: string;
+    billedAmountBdt?: number;
+    factorValue: number;
+    factorSource: string;
+    emissionsTco2e: number;
+    calculationFormula?: string;
+    ocrConfidence: number;
+    confirmedBy: string;
+    confirmedAt: string;
+  }>,
+  fileName: string = 'CarbonBill-Audit-Ledger.csv',
+  redactPrices: boolean = false
+): void {
+  const headers = [
+    'Scope',
+    'Activity Source',
+    'Division',
+    'Utility / Supplier',
+    'Bill / Invoice Number',
+    'Meter Number',
+    'Activity Quantity',
+    'Activity Unit',
+    'Billed Cost (BDT)',
+    'Emission Factor (kgCO2e/unit)',
+    'Factor Citation',
+    'Emissions (tCO2e)',
+    'Calculation Formula',
+    'OCR Confidence (%)',
+    'Verified By',
+    'Timestamp (UTC)'
+  ];
+
+  const escapeField = (val: any) => {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  };
+
+  const rows = items.map((item) => [
+    escapeField(item.scope),
+    escapeField(item.sourceNameEn),
+    escapeField(item.division || 'Dhaka Division'),
+    escapeField(item.billCompany || 'N/A'),
+    escapeField(item.billNumber || 'N/A'),
+    escapeField(item.meterNumber || 'N/A'),
+    escapeField(item.activityQuantity),
+    escapeField(item.activityUnit),
+    escapeField(redactPrices ? '[REDACTED FOR BUYER]' : item.billedAmountBdt ?? 'N/A'),
+    escapeField(item.factorValue),
+    escapeField(item.factorSource),
+    escapeField(item.emissionsTco2e),
+    escapeField(item.calculationFormula || `${item.activityQuantity} ${item.activityUnit} * ${item.factorValue} / 1000`),
+    escapeField(item.ocrConfidence),
+    escapeField(item.confirmedBy),
+    escapeField(item.confirmedAt),
+  ]);
+
+  const csvContent = '\uFEFF' + [headers.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

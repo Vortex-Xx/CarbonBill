@@ -6,22 +6,22 @@ import { toBanglaDigits } from '../../../shared';
 ensureChartRegistered();
 
 interface ScopeBreakdownChartProps {
-  scope1: number;
-  scope2: number;
-  scope3: number;
+  scope1?: number;
+  scope2?: number;
+  scope3?: number;
   isBangla: boolean;
 }
 
 export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
-  scope1,
-  scope2,
-  scope3,
+  scope1 = 0,
+  scope2 = 0,
+  scope3 = 0,
   isBangla,
 }) => {
-  const safeScope1 = Number(scope1 || 0);
-  const safeScope2 = Number(scope2 || 0);
-  const safeScope3 = Number(scope3 || 0);
-  const total = safeScope1 + safeScope2 + safeScope3;
+  const s1 = Number(scope1 || 0);
+  const s2 = Number(scope2 || 0);
+  const s3 = Number(scope3 || 0);
+  const total = s1 + s2 + s3;
 
   const chartData = useMemo(() => {
     return {
@@ -32,7 +32,7 @@ export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
       ],
       datasets: [
         {
-          data: [scope1, scope2, scope3],
+          data: [s1, s2, s3],
           backgroundColor: ['#f97316', '#0284c7', '#8b5cf6'], // Orange, Blue, Violet
           borderWidth: 2,
           borderColor: '#ffffff',
@@ -40,7 +40,7 @@ export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
         },
       ],
     };
-  }, [scope1, scope2, scope3, isBangla]);
+  }, [s1, s2, s3, isBangla]);
 
   const options = useMemo(() => {
     return {
@@ -54,7 +54,7 @@ export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
         tooltip: {
           callbacks: {
             label: (context: any) => {
-              const val = context.parsed;
+              const val = Number(context.parsed ?? 0);
               const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0';
               const formattedVal = isBangla ? toBanglaDigits(val.toFixed(2)) : val.toFixed(2);
               const formattedPct = isBangla ? toBanglaDigits(pct) : pct;
@@ -66,9 +66,9 @@ export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
     };
   }, [total, isBangla]);
 
-  const s1Pct = total > 0 ? ((scope1 / total) * 100).toFixed(1) : '0';
-  const s2Pct = total > 0 ? ((scope2 / total) * 100).toFixed(1) : '0';
-  const s3Pct = total > 0 ? ((scope3 / total) * 100).toFixed(1) : '0';
+  const s1Pct = total > 0 ? ((s1 / total) * 100).toFixed(1) : '0';
+  const s2Pct = total > 0 ? ((s2 / total) * 100).toFixed(1) : '0';
+  const s3Pct = total > 0 ? ((s3 / total) * 100).toFixed(1) : '0';
 
   return (
     <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
@@ -101,7 +101,7 @@ export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
             </span>
           </div>
           <div className="font-mono text-slate-800">
-            {isBangla ? toBanglaDigits(safeScope1.toFixed(2)) : safeScope1.toFixed(2)} tCO₂e (
+            {isBangla ? toBanglaDigits(s1.toFixed(2)) : s1.toFixed(2)} tCO₂e (
             {isBangla ? toBanglaDigits(s1Pct) : s1Pct}%)
           </div>
         </div>
@@ -114,7 +114,7 @@ export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
             </span>
           </div>
           <div className="font-mono text-slate-800">
-            {isBangla ? toBanglaDigits(safeScope2.toFixed(2)) : safeScope2.toFixed(2)} tCO₂e (
+            {isBangla ? toBanglaDigits(s2.toFixed(2)) : s2.toFixed(2)} tCO₂e (
             {isBangla ? toBanglaDigits(s2Pct) : s2Pct}%)
           </div>
         </div>
@@ -127,7 +127,7 @@ export const ScopeBreakdownChart: React.FC<ScopeBreakdownChartProps> = ({
             </span>
           </div>
           <div className="font-mono text-slate-800">
-            {isBangla ? toBanglaDigits(safeScope3.toFixed(2)) : safeScope3.toFixed(2)} tCO₂e (
+            {isBangla ? toBanglaDigits(s3.toFixed(2)) : s3.toFixed(2)} tCO₂e (
             {isBangla ? toBanglaDigits(s3Pct) : s3Pct}%)
           </div>
         </div>

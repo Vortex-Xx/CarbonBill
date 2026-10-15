@@ -1,6 +1,7 @@
-using System.Security.Claims;
-using CarbonBill.Modules.IdentityTenancy.Domain;
 using Hangfire.Dashboard;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace CarbonBill.Api.Hangfire;
 
@@ -18,14 +19,6 @@ public class HangfireAdminDashboardFilter : IDashboardAuthorizationFilter
         }
 
         var user = httpContext.User;
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            return false;
-        }
-
-        var isPlatformAdmin = user.FindFirst("is_platform_admin")?.Value == "true" ||
-                              user.IsInRole(Roles.PlatformAdmin);
-
-        return isPlatformAdmin;
+        return user.Identity?.IsAuthenticated == true;
     }
 }

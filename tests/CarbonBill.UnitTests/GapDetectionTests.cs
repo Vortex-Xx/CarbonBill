@@ -68,7 +68,7 @@ public sealed class GapDetectionTests : IDisposable
         _connection.Open();
 
         _tenantContext = new TenantContext();
-        _tenantContext.SetContext(_orgId, _userId, "Compliance");
+        _tenantContext.SetContext(_orgId, _userId);
 
         var dbOptions = new DbContextOptionsBuilder<GapDetectionDbContext>()
             .UseSqlite(_connection)

@@ -35,7 +35,7 @@ public class DocumentService(
             {
                 return Result.Failure<DocumentReceiptDto>("Active Organization ID is required for document upload.");
             }
-            tenantContext.SetContext(orgId.Value, uploadedByUserId != Guid.Empty ? uploadedByUserId : Guid.Empty, "FloorStaff");
+            tenantContext.SetContext(orgId.Value, uploadedByUserId != Guid.Empty ? uploadedByUserId : Guid.Empty);
         }
 
         // Check idempotency key if provided
@@ -89,6 +89,20 @@ public class DocumentService(
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Could not restore storage file for duplicate document {DocId}", existingDuplicate.Id);
+            }
+
+            // If the existing document was never extracted or failed, trigger extraction now
+            if (existingDuplicate.Status == DocumentStatuses.Uploaded)
+            {
+                await eventPublisher.PublishAsync(new DocumentUploadedEvent(
+                    existingDuplicate.Id,
+                    existingDuplicate.OrgId,
+                    existingDuplicate.StoragePath,
+                    existingDuplicate.ContentType,
+                    existingDuplicate.Source,
+                    DateTime.UtcNow,
+                    DocType: existingDuplicate.DocType,
+                    FileName: existingDuplicate.FileName), ct);
             }
 
             return Result.Success(new DocumentReceiptDto(
@@ -161,7 +175,9 @@ public class DocumentService(
             document.StoragePath,
             document.ContentType,
             document.Source,
-            DateTime.UtcNow), ct);
+            DateTime.UtcNow,
+            DocType: document.DocType,
+            FileName: document.FileName), ct);
 
         return Result.Success(new DocumentReceiptDto(
             document.Id,
@@ -187,7 +203,7 @@ public class DocumentService(
             {
                 return Result.Failure<DocumentReceiptDto>("Active Organization ID is required.");
             }
-            tenantContext.SetContext(orgId.Value, uploadedByUserId != Guid.Empty ? uploadedByUserId : Guid.Empty, "FloorStaff");
+            tenantContext.SetContext(orgId.Value, uploadedByUserId != Guid.Empty ? uploadedByUserId : Guid.Empty);
         }
 
         var documentId = Guid.NewGuid();

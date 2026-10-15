@@ -53,7 +53,7 @@ public class WeeklyDigestJob(
                     continue;
                 }
 
-                var language = prefs?.PreferredLanguage ?? "bn";
+                var language = prefs?.PreferredLanguage ?? "en";
 
                 // Severity ranking: Red (1) > Amber (2) > Info/other (3)
                 int SeverityWeight(string s) => s.ToUpperInvariant() switch

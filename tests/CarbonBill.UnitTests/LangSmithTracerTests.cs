@@ -117,4 +117,88 @@ public sealed class LangSmithTracerTests
         // Assert - Should not throw, returns null
         Assert.Null(runId);
     }
+
+    [Fact]
+    public async Task LangSmithTracer_TraceChainRuns_ForDecarbonizationAndFlags_EmitsValidPayload()
+    {
+        // Arrange
+        var inMemorySettings = new Dictionary<string, string?>
+        {
+            ["LANGSMITH_TRACING"] = "true",
+            ["LANGSMITH_API_KEY"] = "lsv2_pt_test_key_12345",
+            ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com",
+            ["LANGSMITH_PROJECT"] = "CarbonBill"
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings!).Build();
+        var handler = new MockHttpMessageHandler(HttpStatusCode.OK, "{\"message\":\"Run created\"}");
+        var client = new HttpClient(handler);
+        var tracer = new LangSmithTracer(client, config, NullLogger<LangSmithTracer>.Instance);
+
+        // Act - MACC Pipeline trace
+        var maccRunId = await tracer.TraceRunAsync(
+            "MaccDecarbonizationPipeline",
+            "chain",
+            new { sector = "RMG", budget = 3000000m },
+            new { topRecommendationsCount = 5, totalAvoidedTco2e = 142.5m },
+            DateTime.UtcNow.AddSeconds(-2),
+            DateTime.UtcNow,
+            new Dictionary<string, object> { ["pipeline"] = "MaccDecarbonization8Step" });
+
+        // Assert MACC run
+        Assert.NotNull(maccRunId);
+        Assert.NotNull(handler.LastRequest);
+
+        // Act - Anomaly detector trace
+        var flagRunId = await tracer.TraceRunAsync(
+            "CarbonFlagAnomalyDetector",
+            "chain",
+            new { orgId = Guid.NewGuid(), period = "2026-03" },
+            new { flagsRaised = 2 },
+            DateTime.UtcNow.AddSeconds(-1),
+            DateTime.UtcNow,
+            new Dictionary<string, object> { ["engine"] = "CarbonFlagAnomalyDetector" });
+
+        // Assert Flag run
+        Assert.NotNull(flagRunId);
+
+        // Act - Gap detector trace
+        var gapRunId = await tracer.TraceRunAsync(
+            "MissingDocumentGapAnalyzer",
+            "chain",
+            new { period = "2026-03", rulesCount = 4 },
+            new { missingAlerts = 1 },
+            DateTime.UtcNow.AddSeconds(-1),
+            DateTime.UtcNow,
+            new Dictionary<string, object> { ["engine"] = "MissingDocumentGapAnalyzer" });
+
+        // Assert Gap run
+        Assert.NotNull(gapRunId);
+    }
+
+    [Fact]
+    public void LangSmithTracer_ResolvesFromEnvironmentVariables_WhenMissingFromIConfig()
+    {
+        // Arrange
+        var prevEnvKey = Environment.GetEnvironmentVariable("LANGSMITH_API_KEY");
+        var prevEnvTracing = Environment.GetEnvironmentVariable("LANGSMITH_TRACING");
+        try
+        {
+            Environment.SetEnvironmentVariable("LANGSMITH_API_KEY", "lsv2_pt_from_env_9999");
+            Environment.SetEnvironmentVariable("LANGSMITH_TRACING", "true");
+
+            var emptyConfig = new ConfigurationBuilder().Build();
+            var handler = new MockHttpMessageHandler(HttpStatusCode.OK, "{}");
+            var client = new HttpClient(handler);
+            var tracer = new LangSmithTracer(client, emptyConfig, NullLogger<LangSmithTracer>.Instance);
+
+            // Assert
+            Assert.True(tracer.IsEnabled);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LANGSMITH_API_KEY", prevEnvKey);
+            Environment.SetEnvironmentVariable("LANGSMITH_TRACING", prevEnvTracing);
+        }
+    }
 }
+

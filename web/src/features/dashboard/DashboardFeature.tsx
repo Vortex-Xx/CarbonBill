@@ -40,10 +40,6 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({
   const { i18n } = useTranslation();
   const isBangla = i18n.language === 'bn';
 
-  // Selected role tab for previewing personas
-  const [selectedRole, setSelectedRole] = useState<RoleType>(
-    (user?.activeRole as RoleType) || 'Owner'
-  );
   const [selectedPeriod, setSelectedPeriod] = useState<string>('2026-09');
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -89,30 +85,15 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Role Switcher Toolbar */}
+      {/* Unified Executive Toolbar */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            {isBangla ? 'ভূমিকা অনুযায়ী ভিউ:' : 'Role View:'}
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-xl uppercase tracking-wider">
+            {user?.activeOrgName || 'Apex Textiles'}
           </span>
-          <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold">
-            {(['Owner', 'Accountant', 'Compliance', 'Consultant'] as RoleType[]).map((r) => (
-              <button
-                key={r}
-                onClick={() => setSelectedRole(r)}
-                className={`px-3 py-1 rounded-lg transition-all ${
-                  selectedRole === r
-                    ? 'bg-white text-teal-900 shadow-sm font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {r === 'Owner' && (isBangla ? 'মালিক' : 'Owner')}
-                {r === 'Accountant' && (isBangla ? 'হিসাবরক্ষক' : 'Accountant')}
-                {r === 'Compliance' && (isBangla ? 'কমপ্লায়েন্স' : 'Compliance')}
-                {r === 'Consultant' && (isBangla ? 'কনসালট্যান্ট' : 'Consultant')}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs text-slate-500 font-medium">
+            {isBangla ? 'পূর্ণ নিয়ন্ত্রণ ও সার্বিক কার্বন সারসংক্ষেপ' : 'Full Access Executive Carbon Overview'}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -132,9 +113,9 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({
         </div>
       </div>
 
-      {/* Role-Specific Dashboard Overview */}
+      {/* Unified Executive Overview */}
       <RoleDashboard
-        role={selectedRole}
+        role="Owner"
         summary={summary}
         clientOrgs={clientOrgs}
         isBangla={isBangla}

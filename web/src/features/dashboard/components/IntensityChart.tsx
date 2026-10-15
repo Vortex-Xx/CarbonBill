@@ -9,7 +9,10 @@ interface IntensityChartProps {
 }
 
 export const IntensityChart: React.FC<IntensityChartProps> = ({ data, isBangla }) => {
-  const { benchmark, verifiedIntensity, inclEstimateIntensity, unit, productionQuantity } = data;
+  const { benchmark, unit } = data;
+  const vInt = Number(data.verifiedIntensity ?? 0);
+  const iInt = Number(data.inclEstimateIntensity ?? 0);
+  const pQty = Number(data.productionQuantity ?? 0);
   const hasBenchmark = Boolean(benchmark && typeof benchmark.n === 'number' && benchmark.n >= 10);
 
   return (
@@ -21,8 +24,8 @@ export const IntensityChart: React.FC<IntensityChartProps> = ({ data, isBangla }
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             {isBangla
-              ? `মাসিক মোট উৎপাদন: ${toBanglaDigits(productionQuantity.toLocaleString('en-US'))} পিস`
-              : `Monthly Production Output: ${productionQuantity.toLocaleString('en-US')} pcs`}
+              ? `মাসিক মোট উৎপাদন: ${toBanglaDigits(pQty.toLocaleString('en-US'))} পিস`
+              : `Monthly Production Output: ${pQty.toLocaleString('en-US')} pcs`}
           </p>
         </div>
         <span className="text-[11px] font-semibold px-2 py-0.5 bg-teal-50 text-teal-800 rounded-md border border-teal-200">
@@ -38,7 +41,7 @@ export const IntensityChart: React.FC<IntensityChartProps> = ({ data, isBangla }
           </span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-black text-teal-900">
-              {isBangla ? toBanglaDigits(Number(verifiedIntensity ?? 0).toFixed(2)) : Number(verifiedIntensity ?? 0).toFixed(2)}
+              {isBangla ? toBanglaDigits(vInt.toFixed(2)) : vInt.toFixed(2)}
             </span>
             <span className="text-[10px] text-slate-500">kg CO₂e</span>
           </div>
@@ -53,7 +56,7 @@ export const IntensityChart: React.FC<IntensityChartProps> = ({ data, isBangla }
           </span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-black text-slate-800">
-              {isBangla ? toBanglaDigits(Number(inclEstimateIntensity ?? 0).toFixed(2)) : Number(inclEstimateIntensity ?? 0).toFixed(2)}
+              {isBangla ? toBanglaDigits(iInt.toFixed(2)) : iInt.toFixed(2)}
             </span>
             <span className="text-[10px] text-slate-500">kg CO₂e</span>
           </div>

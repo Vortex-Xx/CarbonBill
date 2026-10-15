@@ -80,7 +80,7 @@ public class UserNotificationPreference : BaseEntity
 {
     public Guid UserId { get; set; }
     public Guid? OrgId { get; set; }
-    public string PreferredLanguage { get; set; } = "bn"; // Bangla-first by default
+    public string PreferredLanguage { get; set; } = "en"; // English by default
     public bool InAppEnabled { get; set; } = true;
     public bool WebPushEnabled { get; set; } = true;
     public bool EmailEnabled { get; set; } = true;

@@ -301,7 +301,7 @@ public class AbstractContractsIntegrationTests : IDisposable
         using (var scope = sp.CreateScope())
         {
             var tenantContext = scope.ServiceProvider.GetRequiredService<ITenantContext>();
-            tenantContext.SetContext(orgId, userId, "Owner");
+            tenantContext.SetContext(orgId, userId);
 
             // 1. Seed Factor and Unit Conversion in real DB
             var unitsDb = scope.ServiceProvider.GetRequiredService<ActivityUnitsDbContext>();
@@ -392,7 +392,7 @@ public class AbstractContractsIntegrationTests : IDisposable
 
         using var scope = sp.CreateScope();
         var tenantContext = scope.ServiceProvider.GetRequiredService<ITenantContext>();
-        tenantContext.SetContext(orgId, userId, "Owner");
+        tenantContext.SetContext(orgId, userId);
 
         // Seed FlagRule
         var flagsDb = scope.ServiceProvider.GetRequiredService<FlagsDbContext>();
@@ -460,7 +460,7 @@ public class AbstractContractsIntegrationTests : IDisposable
 
         using var scope = sp.CreateScope();
         var tenantContext = scope.ServiceProvider.GetRequiredService<ITenantContext>();
-        tenantContext.SetContext(orgId, userId, "Owner");
+        tenantContext.SetContext(orgId, userId);
 
         var activityWriter = scope.ServiceProvider.GetRequiredService<IActivityWriter>();
         var activityDb = scope.ServiceProvider.GetRequiredService<ActivityUnitsDbContext>();

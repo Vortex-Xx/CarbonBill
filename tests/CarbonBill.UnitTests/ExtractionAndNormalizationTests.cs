@@ -1,5 +1,6 @@
 using CarbonBill.Modules.Extraction.Services.Classification;
 using CarbonBill.Modules.Extraction.Services.Normalization;
+using CarbonBill.Modules.Extraction.Services.Providers;
 using Xunit;
 
 namespace CarbonBill.UnitTests;
@@ -72,5 +73,40 @@ public class ExtractionAndNormalizationTests
         {
             Assert.True(result.Confidence >= 0.85f);
         }
+    }
+
+    [Fact]
+    public void EvaluateAccuracy_AcceptsValidBanglaElectricityBill()
+    {
+        var text = "ঢাকা পাওয়ার ডিস্ট্রিবিউশন কোম্পানি লিমিটেড (ডিপিডিসি) বিদ্যুৎ বিল হিসাবের মাস সেপ্টেম্বর ২০২৬। ব্যবহৃত ইউনিট ৪৩৯ kWh। মোট প্রদেয় টাকা ৪৪৪৫.০০ BDT। মিটার নং ৯৮৭৬৫৪৩২।";
+        var (isAcceptable, score, details) = DualOcrEngine.EvaluateAccuracy(text);
+        
+        Assert.True(isAcceptable);
+        Assert.True(score >= 0.60);
+        Assert.Contains("CompositeScore", details);
+    }
+
+    [Fact]
+    public void EvaluateAccuracy_AcceptsValidEnglishFuelChallan()
+    {
+        var text = "PADMA OIL COMPANY LIMITED. Diesel Delivery Challan No: CH-8812. Date: 08/10/2026. Product: Diesel Fuel. Quantity: 250 Liters. Rate: 110 TK. Total Amount: 27,500.00 BDT.";
+        var (isAcceptable, score, details) = DualOcrEngine.EvaluateAccuracy(text);
+
+        Assert.True(isAcceptable);
+        Assert.True(score >= 0.60);
+    }
+
+    [Theory]
+    [InlineData("7\n\f\f")]
+    [InlineData("abc xyz some random unrecognised text without numbers")]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("স্বাভাবিক পাঠোদ্ধার সম্পন্ন")]
+    public void EvaluateAccuracy_RejectsLowAccuracyOrGarbledText(string? lowQualityText)
+    {
+        var (isAcceptable, score, details) = DualOcrEngine.EvaluateAccuracy(lowQualityText);
+
+        Assert.False(isAcceptable);
+        Assert.True(score < 0.60);
     }
 }

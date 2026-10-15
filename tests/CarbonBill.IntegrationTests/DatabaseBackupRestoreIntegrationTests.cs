@@ -35,7 +35,7 @@ public class DatabaseBackupRestoreIntegrationTests : IDisposable
         var orgId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var tenantContext = new TenantContext();
-        tenantContext.SetContext(orgId, userId, Roles.Owner);
+        tenantContext.SetContext(orgId, userId);
 
         var pragmaInterceptor = new SqlitePragmaInterceptor();
         var tenantInterceptor = new TenantSaveChangesInterceptor(tenantContext);

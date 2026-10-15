@@ -54,7 +54,7 @@ public static class ExtractionModuleExtensions
                 sp.GetRequiredService<TenantSaveChangesInterceptor>());
         });
 
-        services.AddHttpClient<ILangSmithTracer, CarbonBill.Modules.Extraction.Services.Tracing.LangSmithTracer>();
+        services.AddHttpClient<CarbonBill.SharedKernel.Providers.ILangSmithTracer, CarbonBill.Modules.Extraction.Services.Tracing.LangSmithTracer>();
         services.AddHttpClient<IGroqLlmExtractor, GroqLlmExtractor>();
         services.AddSingleton<IDualOcrEngine, DualOcrEngine>();
         services.AddScoped<IExtractionService, ExtractionService>();

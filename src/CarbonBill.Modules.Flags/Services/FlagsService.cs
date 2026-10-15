@@ -19,12 +19,14 @@ public class FlagsService(
     FlagsDbContext dbContext,
     IEnumerable<IFlagRuleEvaluator> evaluators,
     IDomainEventPublisher eventPublisher,
-    ILogger<FlagsService> logger) : IFlagRaiser, IFlagReader, IFlagEngine
+    ILogger<FlagsService> logger,
+    CarbonBill.SharedKernel.Providers.ILangSmithTracer? langSmithTracer = null) : IFlagRaiser, IFlagReader, IFlagEngine
 {
     private readonly FlagsDbContext _dbContext = dbContext;
     private readonly IEnumerable<IFlagRuleEvaluator> _evaluators = evaluators;
     private readonly IDomainEventPublisher _eventPublisher = eventPublisher;
     private readonly ILogger<FlagsService> _logger = logger;
+    private readonly CarbonBill.SharedKernel.Providers.ILangSmithTracer? _langSmithTracer = langSmithTracer;
 
     // --- IFlagRaiser ---
 
@@ -242,12 +244,15 @@ public class FlagsService(
 
     public async Task<IReadOnlyList<FlagDto>> EvaluateOrgPeriodAsync(Guid orgId, string period, Guid? siteId = null, CancellationToken ct = default)
     {
+        var startTimeUtc = DateTime.UtcNow;
         var activeRules = await _dbContext.FlagRules.Where(r => r.IsActive).ToListAsync(ct);
         var results = new List<FlagDto>();
         var evalContext = new EvaluationContext(orgId, period, siteId);
+        var evaluatedRules = new List<string>();
 
         foreach (var rule in activeRules)
         {
+            evaluatedRules.Add(rule.FlagCode);
             var evaluator = _evaluators.FirstOrDefault(e => e.RuleCode.Equals(rule.FlagCode, StringComparison.OrdinalIgnoreCase));
             if (evaluator == null) continue;
 
@@ -271,6 +276,50 @@ public class FlagsService(
             {
                 // Condition is clear -> Auto-resolve if currently open
                 await AutoResolveFlagAsync(orgId, rule.FlagCode, period, siteId, ct);
+            }
+        }
+
+        if (_langSmithTracer != null)
+        {
+            try
+            {
+                await _langSmithTracer.TraceRunAsync(
+                    "CarbonFlagAnomalyDetector",
+                    "chain",
+                    new
+                    {
+                        orgId,
+                        period,
+                        siteId,
+                        activeRulesCount = activeRules.Count,
+                        evaluatedRuleCodes = evaluatedRules
+                    },
+                    new
+                    {
+                        flagsRaisedCount = results.Count,
+                        raisedFlags = results.Select(f => new
+                        {
+                            ruleCode = f.RuleCode,
+                            severity = f.Severity,
+                            family = f.Family,
+                            explanationEn = f.ExplanationEn
+                        }).ToList()
+                    },
+                    startTimeUtc,
+                    DateTime.UtcNow,
+                    new Dictionary<string, object>
+                    {
+                        ["module"] = "Flags",
+                        ["engine"] = "CarbonFlagAnomalyDetector",
+                        ["orgId"] = orgId.ToString(),
+                        ["period"] = period
+                    },
+                    null,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to emit LangSmith trace for Carbon Flag Anomaly Detector.");
             }
         }
 

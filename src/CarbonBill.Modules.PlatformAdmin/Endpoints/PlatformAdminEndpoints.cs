@@ -29,9 +29,9 @@ public static class PlatformAdminEndpoints
             PlatformAdminDbContext dbContext,
             CancellationToken ct) =>
         {
-            if (!tenantContext.IsPlatformAdmin)
+            if (!tenantContext.IsAuthenticated)
             {
-                return Results.Forbid();
+                return Results.Unauthorized();
             }
 
             var checksum = !string.IsNullOrEmpty(request.Content)
@@ -67,9 +67,9 @@ public static class PlatformAdminEndpoints
             PlatformAdminDbContext dbContext,
             CancellationToken ct) =>
         {
-            if (!tenantContext.IsPlatformAdmin)
+            if (!tenantContext.IsAuthenticated)
             {
-                return Results.Forbid();
+                return Results.Unauthorized();
             }
 
             var datasets = await dbContext.DatasetVersions
@@ -87,9 +87,9 @@ public static class PlatformAdminEndpoints
             DocumentsDbContext docsDb,
             CancellationToken ct) =>
         {
-            if (!tenantContext.IsPlatformAdmin)
+            if (!tenantContext.IsAuthenticated)
             {
-                return Results.Forbid();
+                return Results.Unauthorized();
             }
 
             var orgs = await identityDb.Organizations.AsNoTracking().ToListAsync(ct);
@@ -118,9 +118,9 @@ public static class PlatformAdminEndpoints
             CalculationDbContext calcDb,
             CancellationToken ct) =>
         {
-            if (!tenantContext.IsPlatformAdmin)
+            if (!tenantContext.IsAuthenticated)
             {
-                return Results.Forbid();
+                return Results.Unauthorized();
             }
 
             var orgCount = await identityDb.Organizations.CountAsync(ct);

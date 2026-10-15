@@ -8,7 +8,6 @@ import { AuditorView } from './AuditorView';
 export const auditorRoutes = [
   {
     path: '/auditor',
-    role: 'AuditorLink',
     component: AuditorView,
   },
 ];

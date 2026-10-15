@@ -26,7 +26,9 @@ export const RecommendationsView: React.FC = () => {
     setLoading(true);
     try {
       const data = await fetchRecommendations();
-      setRecommendations(data);
+      setRecommendations(Array.isArray(data) ? data : []);
+    } catch {
+      setRecommendations([]);
     } finally {
       setLoading(false);
     }
@@ -37,8 +39,9 @@ export const RecommendationsView: React.FC = () => {
   }, []);
 
   const filtered = useMemo(() => {
-    if (categoryFilter === 'all') return recommendations;
-    return recommendations.filter((r) => r.category === categoryFilter);
+    const list = Array.isArray(recommendations) ? recommendations : [];
+    if (categoryFilter === 'all') return list;
+    return list.filter((r) => r.category === categoryFilter);
   }, [recommendations, categoryFilter]);
 
   function handleInitiateStatusChange(rec: Recommendation, newStatus: RecommendationStatus) {
@@ -163,6 +166,10 @@ export const RecommendationsView: React.FC = () => {
         </div>
       ) : activeTab === 'macc' ? (
         <MaccChart recommendations={filtered} isBangla={isBangla} />
+      ) : filtered.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 text-xs font-semibold shadow-xs">
+          {isBangla ? 'এই ক্যাটাগরিতে কোনো সুপারিশ পাওয়া যায়নি।' : 'No recommendations found for this category.'}
+        </div>
       ) : (
         <div className="space-y-4">
           {filtered.map((rec) => (
