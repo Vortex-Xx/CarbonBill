@@ -12,8 +12,7 @@ public record AuthTokens(
     string AccessToken,
     string RefreshToken,
     DateTime ExpiresAtUtc,
-    Guid ActiveOrgId,
-    string ActiveRole);
+    Guid ActiveOrgId);
 
 public interface ITokenService
 {
@@ -41,8 +40,6 @@ public class TokenService(IConfiguration configuration) : ITokenService
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.Name, user.FullName),
             new("org_id", activeMembership.OrgId.ToString()),
-            new(ClaimTypes.Role, activeMembership.Role),
-            new("is_platform_admin", user.IsPlatformAdmin ? "true" : "false"),
             new("pref_lang", user.PreferredLanguage)
         };
 
@@ -64,8 +61,7 @@ public class TokenService(IConfiguration configuration) : ITokenService
             AccessToken: accessToken,
             RefreshToken: rawRefreshToken,
             ExpiresAtUtc: expires,
-            ActiveOrgId: activeMembership.OrgId,
-            ActiveRole: activeMembership.Role);
+            ActiveOrgId: activeMembership.OrgId);
     }
 
     public string HashRefreshToken(string rawToken)

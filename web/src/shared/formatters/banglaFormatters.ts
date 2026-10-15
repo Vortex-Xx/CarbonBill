@@ -50,7 +50,7 @@ export function toLatinDigits(input: string): string {
  */
 export function formatBdt(amount: number, options: { useBanglaDigits?: boolean; symbol?: string } = {}): string {
   const { useBanglaDigits = true, symbol = '৳' } = options;
-  if (isNaN(amount)) return `${symbol} 0.00`;
+  if (amount == null || isNaN(amount)) return `${symbol} 0.00`;
 
   // Format with standard Indian/South Asian grouping: Lakhs and Crores
   const parts = amount.toFixed(2).split('.');

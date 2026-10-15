@@ -36,7 +36,6 @@ public class TenantSaveChangesInterceptor(ITenantContext tenantContext) : SaveCh
         if (entries.Count == 0) return;
 
         var currentOrgId = _tenantContext.CurrentOrgId;
-        var isPlatformAdmin = _tenantContext.IsPlatformAdmin;
 
         foreach (var entry in entries)
         {
@@ -51,14 +50,14 @@ public class TenantSaveChangesInterceptor(ITenantContext tenantContext) : SaveCh
                     }
                     entry.Entity.OrgId = currentOrgId.Value;
                 }
-                else if (!isPlatformAdmin && currentOrgId.HasValue && entry.Entity.OrgId != currentOrgId.Value)
+                else if (currentOrgId.HasValue && entry.Entity.OrgId != currentOrgId.Value)
                 {
                     throw new CrossTenantAccessException(entry.Entity.OrgId, currentOrgId, "Insert");
                 }
             }
             else if (entry.State is EntityState.Modified or EntityState.Deleted)
             {
-                if (!isPlatformAdmin && currentOrgId.HasValue && entry.Entity.OrgId != currentOrgId.Value)
+                if (currentOrgId.HasValue && entry.Entity.OrgId != currentOrgId.Value)
                 {
                     throw new CrossTenantAccessException(
                         entry.Entity.OrgId,

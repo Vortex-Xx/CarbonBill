@@ -9,7 +9,6 @@ export * from './ReviewQueueSidebar';
 export const reviewRoutes = [
   {
     path: '/review',
-    role: 'Accountant',
     component: ReviewWorkspace,
   },
 ];

@@ -1,48 +1,39 @@
-using CarbonBill.SharedKernel.Domain;
-using CarbonBill.SharedKernel.Tenancy;
+using CarbonBill.Modules.ActivityUnits.Endpoints;
+using CarbonBill.Modules.ActivityUnits.Persistence;
+using CarbonBill.Modules.ActivityUnits.Services;
+using CarbonBill.SharedKernel.Persistence;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CarbonBill.Modules.ActivityUnits;
 
-public class Unit : BaseEntity
-{
-    public string Code { get; set; } = string.Empty; // kWh, litre, kg, m3, tonne_km
-    public string NameEn { get; set; } = string.Empty;
-    public string NameBn { get; set; } = string.Empty;
-    public string PhysicalQuantity { get; set; } = string.Empty; // Energy, Volume, Mass, Distance
-}
-
-public class UnitConversion : BaseEntity
-{
-    public string FromUnit { get; set; } = string.Empty;
-    public string ToUnit { get; set; } = string.Empty;
-    public decimal ConversionFactor { get; set; }
-    public int Version { get; set; } = 1;
-}
-
-public class ActivityRecord : AggregateRoot, ITenantScopedEntity
-{
-    public Guid OrgId { get; set; }
-    public Guid? SiteId { get; set; }
-    public Guid? AssetId { get; set; }
-    public Guid DocumentId { get; set; }
-    public string ActivityType { get; set; } = "Electricity"; // Electricity, Diesel, NaturalGas, Transport
-    public decimal QuantityStandard { get; set; } // in canonical unit
-    public string StandardUnit { get; set; } = "kWh";
-    public decimal RawQuantity { get; set; }
-    public string RawUnit { get; set; } = "kWh";
-    public decimal? TotalCostBdt { get; set; }
-    public decimal? UnitCostBdt { get; set; }
-    public string Period { get; set; } = "2026-09"; // YYYY-MM
-    public bool IsEstimated { get; set; }
-}
-
 public static class ActivityUnitsModuleExtensions
 {
     public static IServiceCollection AddActivityUnitsModule(this IServiceCollection services, IConfiguration configuration)
     {
-        // Module shell DI registration
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? "Data Source=carbonbill.db;Cache=Shared";
+
+        services.AddDbContext<ActivityUnitsDbContext>((sp, options) =>
+        {
+            options.UseSqlite(connectionString);
+            options.AddInterceptors(
+                sp.GetRequiredService<SqlitePragmaInterceptor>(),
+                sp.GetRequiredService<TenantSaveChangesInterceptor>());
+        });
+
+        services.AddScoped<IUnitConverter, UnitConverter>();
+
         return services;
+    }
+
+    public static IEndpointRouteBuilder MapActivityUnitsModuleEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapActivityUnitsEndpoints();
+        endpoints.MapUtilityConnectorsEndpoints();
+        return endpoints;
     }
 }

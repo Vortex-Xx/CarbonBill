@@ -25,6 +25,7 @@ public static class DocumentsModuleExtensions
         });
 
         services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<CarbonBill.SharedKernel.Events.IDomainEventHandler<CarbonBill.SharedKernel.Events.DocumentExtractedEvent>, DocumentExtractedHandler>();
 
         return services;
     }

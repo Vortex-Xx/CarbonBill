@@ -133,6 +133,128 @@ public static class GoldenHarnessRunner
         return sb.ToString();
     }
 
+    public static IReadOnlyList<GoldenBillAnnotation> Generate150Dataset()
+    {
+        var list = new List<GoldenBillAnnotation>();
+        int idCounter = 1;
+
+        // 1. 50 Electricity bills
+        string[] elecVendors = ["DESCO", "DPDC", "BREB", "WZPDCL", "NESCO"];
+        for (int i = 0; i < 50; i++)
+        {
+            var vendor = elecVendors[i % elecVendors.Length];
+            var month = (i % 12 + 1).ToString("D2", CultureInfo.InvariantCulture);
+            var year = 2024 + (i / 24);
+            var period = $"{year}-{month}";
+            var billNo = $"{vendor}-{year}-{10000 + i}";
+            var qty = 15000m + (i * 850m);
+            var amount = qty * 10.5m;
+            var isBangla = i % 2 == 0;
+            var rawText = isBangla
+                ? $"{vendor} বিদ্যুৎ বিল নম্বর: {billNo}\nবিলিং মাস: {period}\nমোট ব্যবহার: {BanglaNormalizer.NormalizeDigits(qty.ToString(CultureInfo.InvariantCulture))} kWh\nমোট প্রদেয়: {amount} BDT"
+                : $"{vendor} Electricity Bill No: {billNo}\nPeriod: {period}\nConsumption: {qty} kWh\nAmount: {amount} BDT";
+
+            list.Add(new GoldenBillAnnotation(
+                $"ELEC-{idCounter++:D3}",
+                $"{vendor.ToLowerInvariant()}_bill_{period}_{i:D2}.pdf",
+                "Electricity",
+                rawText,
+                vendor,
+                billNo,
+                period,
+                qty,
+                "kWh",
+                amount,
+                $"MTR-{900000 + i}",
+                i % 5 == 0 ? 1250.00m : 0m));
+        }
+
+        // 2. 40 Gas bills
+        string[] gasVendors = ["Titas Gas", "Bakhrabad Gas", "Jalalabad Gas", "Karnaphuli Gas"];
+        for (int i = 0; i < 40; i++)
+        {
+            var vendor = gasVendors[i % gasVendors.Length];
+            var month = (i % 12 + 1).ToString("D2", CultureInfo.InvariantCulture);
+            var period = $"2024-{month}";
+            var billNo = $"GAS-{vendor.Replace(" ", "").ToUpperInvariant()}-{20000 + i}";
+            var qty = 5000m + (i * 320m);
+            var amount = qty * 30.25m;
+            var isBangla = i % 3 == 0;
+            var rawText = isBangla
+                ? $"{vendor} আরএমএস গ্যাস বিল: {billNo}\nমাস: {period}\nব্যবহার: {qty} ঘনমিটার (m3)\nবিল টাকা: {amount} BDT"
+                : $"{vendor} RMS Gas Bill: {billNo}\nPeriod: {period}\nConsumption: {qty} m3\nTotal: {amount} BDT";
+
+            list.Add(new GoldenBillAnnotation(
+                $"GAS-{idCounter++:D3}",
+                $"gas_{period}_{i:D2}.pdf",
+                "Gas",
+                rawText,
+                vendor,
+                billNo,
+                period,
+                qty,
+                "m3",
+                amount,
+                $"RMS-{5000 + i}",
+                0m));
+        }
+
+        // 3. 35 Diesel fuel receipts
+        string[] dieselVendors = ["Padma Oil", "Meghna Petroleum", "Jamuna Oil"];
+        for (int i = 0; i < 35; i++)
+        {
+            var vendor = dieselVendors[i % dieselVendors.Length];
+            var month = (i % 12 + 1).ToString("D2", CultureInfo.InvariantCulture);
+            var period = $"2024-{month}";
+            var billNo = $"DSL-{vendor.Replace(" ", "").Substring(0, 3).ToUpperInvariant()}-{30000 + i}";
+            var qty = 800m + (i * 150m);
+            var amount = qty * 108.0m;
+            var isCrumpled = i % 2 == 1;
+            var rawText = isCrumpled
+                ? $"{vendor} ফিলিং স্টেশন চালান নং: {billNo}\nতারিখ: {period}-12\nডিজেল পরিমাণ: {qty} লিটার\nটাকা: {amount} BDT"
+                : $"{vendor} Fuel Slip: {billNo}\nPeriod: {period}\nDiesel Volume: {qty} litre\nPayable: {amount} BDT";
+
+            list.Add(new GoldenBillAnnotation(
+                $"DSL-{idCounter++:D3}",
+                $"diesel_{period}_{i:D2}.jpg",
+                "Diesel",
+                rawText,
+                vendor,
+                billNo,
+                period,
+                qty,
+                "litre",
+                amount));
+        }
+
+        // 4. 25 Shipping & Freight Challans
+        string[] transportVendors = ["Apex Logistics", "Bengal Cargo", "Savar Transport", "Chittagong Freight"];
+        for (int i = 0; i < 25; i++)
+        {
+            var vendor = transportVendors[i % transportVendors.Length];
+            var month = (i % 12 + 1).ToString("D2", CultureInfo.InvariantCulture);
+            var period = $"2024-{month}";
+            var billNo = $"CHLN-{vendor.Replace(" ", "").Substring(0, 3).ToUpperInvariant()}-{40000 + i}";
+            var qty = 2500m + (i * 400m);
+            var amount = qty * 4.5m;
+            var rawText = $"{vendor} পরিবহন চালান: {billNo}\nতারিখ: {period}-20\nওজন: {qty} কেজি (kg)\nভাড়া: {amount} BDT";
+
+            list.Add(new GoldenBillAnnotation(
+                $"CHLN-{idCounter++:D3}",
+                $"challan_{period}_{i:D2}.webp",
+                "Transport",
+                rawText,
+                vendor,
+                billNo,
+                period,
+                qty,
+                "kg",
+                amount));
+        }
+
+        return list;
+    }
+
     private static void RecordField(
         string fieldName,
         string? expected,

@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\CarbonBill.SharedKernel\CarbonBill.SharedKernel.csproj" />
+    <ProjectReference Include="..\CarbonBill.Modules.ActivityUnits\CarbonBill.Modules.ActivityUnits.csproj" />
+    <ProjectReference Include="..\CarbonBill.Modules.FactorRegistry\CarbonBill.Modules.FactorRegistry.csproj" />
+    <ProjectReference Include="..\CarbonBill.Modules.Audit\CarbonBill.Modules.Audit.csproj" />
   </ItemGroup>
 </Project>

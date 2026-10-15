@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /app
+
+# Copy csproj files and restore
+COPY src/*/*.csproj ./src/
+RUN for file in $(ls ./src/*.csproj); do \
+    mkdir -p "src/$(basename ${file} .csproj)" && \
+    mv "${file}" "src/$(basename ${file} .csproj)/"; \
+    done
+COPY CarbonBill.sln ./
+RUN dotnet restore
+
+# Copy all source and build
+COPY src/ ./src/
+RUN dotnet publish src/CarbonBill.Api/CarbonBill.Api.csproj -c Release -o /out
+
+# Runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /out ./
+
+# SQLite data directory
+ENV ASPNETCORE_URLS=http://+:5000
+ENV ASPNETCORE_ENVIRONMENT=Production
+VOLUME ["/data"]
+
+EXPOSE 5000
+ENTRYPOINT ["dotnet", "CarbonBill.Api.dll"]

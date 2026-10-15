@@ -32,9 +32,8 @@ public class ExtractionDbContext(
 
             // Global Query Filter for Tenancy Isolation
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
-                !_tenantContext.CurrentOrgId.HasValue ||
-                e.OrgId == _tenantContext.CurrentOrgId.Value);
+                _tenantContext.CurrentOrgId == null ||
+                e.OrgId == _tenantContext.CurrentOrgId);
         });
 
         modelBuilder.Entity<ExtractedField>(entity =>
@@ -49,9 +48,8 @@ public class ExtractionDbContext(
             entity.HasIndex(e => new { e.OrgId, e.DocumentId });
 
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
-                !_tenantContext.CurrentOrgId.HasValue ||
-                e.OrgId == _tenantContext.CurrentOrgId.Value);
+                _tenantContext.CurrentOrgId == null ||
+                e.OrgId == _tenantContext.CurrentOrgId);
         });
     }
 }

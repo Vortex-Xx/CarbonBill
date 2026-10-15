@@ -1,0 +1,44 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Data Source=/data/carbonbill.db;Cache=Shared
+      - ConnectionStrings__HangfireConnection=Data Source=/data/hangfire.db;Cache=Shared
+      - Jwt__Key=${JWT_SECRET:-CarbonBill-SuperSecret-Production-Key-2026-VeryLongKeyNeeded-32Bytes}
+      - Jwt__Issuer=CarbonBill
+      - Jwt__Audience=CarbonBillClients
+    volumes:
+      - app_data:/data
+    expose:
+      - "5000"
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+    restart: unless-stopped
+    expose:
+      - "80"
+
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:

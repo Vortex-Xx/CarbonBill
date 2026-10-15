@@ -1,48 +1,40 @@
-using CarbonBill.SharedKernel.Domain;
-using CarbonBill.SharedKernel.Tenancy;
+using CarbonBill.Modules.Onboarding.Domain;
+using CarbonBill.Modules.Onboarding.Endpoints;
+using CarbonBill.Modules.Onboarding.Persistence;
+using CarbonBill.Modules.Onboarding.Services;
+using CarbonBill.SharedKernel.Contracts;
+using CarbonBill.SharedKernel.Persistence;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CarbonBill.Modules.Onboarding;
 
-public class Site : BaseEntity, ITenantScopedEntity
-{
-    public Guid OrgId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Address { get; set; }
-    public string? City { get; set; }
-    public bool IsPrimary { get; set; } = true;
-    public List<Asset> Assets { get; set; } = [];
-}
-
-public class Asset : BaseEntity, ITenantScopedEntity
-{
-    public Guid OrgId { get; set; }
-    public Guid SiteId { get; set; }
-    public Site Site { get; set; } = null!;
-    public string Type { get; set; } = "meter"; // meter, genset, boiler, vehicle
-    public string Name { get; set; } = string.Empty;
-    public string? IdentifierOrMeterNumber { get; set; }
-    public string? FuelOrEnergyType { get; set; } // electricity, diesel, gas, lpg
-    public List<ExpectedDocRule> ExpectedDocRules { get; set; } = [];
-}
-
-public class ExpectedDocRule : BaseEntity, ITenantScopedEntity
-{
-    public Guid OrgId { get; set; }
-    public Guid AssetId { get; set; }
-    public Asset Asset { get; set; } = null!;
-    public string DocType { get; set; } = "ElectricityBill";
-    public string Frequency { get; set; } = "Monthly"; // Monthly, Quarterly, PerDelivery
-    public int DueDayOfMonth { get; set; } = 15;
-    public Guid? ResponsibleUserId { get; set; }
-}
-
 public static class OnboardingModuleExtensions
 {
     public static IServiceCollection AddOnboardingModule(this IServiceCollection services, IConfiguration configuration)
     {
-        // Module shell DI registration
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? "Data Source=carbonbill.db;Cache=Shared";
+
+        services.AddDbContext<OnboardingDbContext>((sp, options) =>
+        {
+            options.UseSqlite(connectionString);
+            options.AddInterceptors(
+                sp.GetRequiredService<SqlitePragmaInterceptor>(),
+                sp.GetRequiredService<TenantSaveChangesInterceptor>());
+        });
+
+        services.AddScoped<IExpectedDocRuleReader, ExpectedDocRuleReader>();
+
         return services;
+    }
+
+    public static IEndpointRouteBuilder MapOnboardingModuleEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapOnboardingEndpoints();
+        return endpoints;
     }
 }

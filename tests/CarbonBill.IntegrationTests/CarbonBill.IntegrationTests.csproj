@@ -11,7 +11,24 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CarbonBill.SharedKernel\CarbonBill.SharedKernel.csproj" />
     <ProjectReference Include="..\..\src\CarbonBill.Modules.IdentityTenancy\CarbonBill.Modules.IdentityTenancy.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Onboarding\CarbonBill.Modules.Onboarding.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.ActivityUnits\CarbonBill.Modules.ActivityUnits.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.FactorRegistry\CarbonBill.Modules.FactorRegistry.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Calculation\CarbonBill.Modules.Calculation.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Documents\CarbonBill.Modules.Documents.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Extraction\CarbonBill.Modules.Extraction.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Review\CarbonBill.Modules.Review.csproj" />
     <ProjectReference Include="..\..\src\CarbonBill.Modules.Audit\CarbonBill.Modules.Audit.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Documents\CarbonBill.Modules.Documents.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Extraction\CarbonBill.Modules.Extraction.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Review\CarbonBill.Modules.Review.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.GapDetection\CarbonBill.Modules.GapDetection.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Flags\CarbonBill.Modules.Flags.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Insights\CarbonBill.Modules.Insights.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Notifications\CarbonBill.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Recommendations\CarbonBill.Modules.Recommendations.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.Reporting\CarbonBill.Modules.Reporting.csproj" />
+    <ProjectReference Include="..\..\src\CarbonBill.Modules.PlatformAdmin\CarbonBill.Modules.PlatformAdmin.csproj" />
     <ProjectReference Include="..\..\src\CarbonBill.Api\CarbonBill.Api.csproj" />
   </ItemGroup>
 </Project>

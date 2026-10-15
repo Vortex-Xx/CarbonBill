@@ -1,24 +1,33 @@
-using CarbonBill.SharedKernel.Domain;
+using CarbonBill.Modules.PlatformAdmin.Endpoints;
+using CarbonBill.Modules.PlatformAdmin.Persistence;
+using CarbonBill.SharedKernel.Persistence;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CarbonBill.Modules.PlatformAdmin;
 
-public class DatasetVersion : BaseEntity
-{
-    public string Kind { get; set; } = string.Empty; // EmissionFactors, MeasureLibrary, Benchmarks
-    public string VersionTag { get; set; } = "v1.0.0";
-    public string ChecksumSha256 { get; set; } = string.Empty;
-    public string SourceMetadataJson { get; set; } = "{}";
-    public Guid LoadedByUserId { get; set; }
-    public DateTime PublishedAtUtc { get; set; } = DateTime.UtcNow;
-}
-
 public static class PlatformAdminModuleExtensions
 {
     public static IServiceCollection AddPlatformAdminModule(this IServiceCollection services, IConfiguration configuration)
     {
-        // Module shell DI registration
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? "Data Source=carbonbill.db;Cache=Shared";
+
+        services.AddDbContext<PlatformAdminDbContext>((sp, options) =>
+        {
+            options.UseSqlite(connectionString);
+            options.AddInterceptors(sp.GetRequiredService<SqlitePragmaInterceptor>());
+        });
+
         return services;
+    }
+
+    public static IEndpointRouteBuilder MapPlatformAdminModuleEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPlatformAdminEndpoints();
+        return endpoints;
     }
 }

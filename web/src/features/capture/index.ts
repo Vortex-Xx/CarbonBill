@@ -8,12 +8,10 @@ export * from './pushSubscription';
 export const captureRoutes = [
   {
     path: '/floor',
-    role: 'FloorStaff',
     component: CaptureScreen,
   },
   {
     path: '/capture',
-    role: 'FloorStaff',
     component: CaptureScreen,
   },
 ];

@@ -1,10 +1,19 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
-export type CaptureQueueStatus = 'queued' | 'uploading' | 'received' | 'needs_retake' | 'failed';
+export type CaptureQueueStatus =
+  | 'queued'
+  | 'uploading'
+  | 'received'
+  | 'needs_retake'
+  | 'failed'
+  | 'needs_review'
+  | 'calculated'
+  | 'confirmed'
+  | 'duplicate';
 
 export interface CaptureQueueItem {
   id: string; // Client GUID idempotency key
-  category: 'diesel' | 'gas' | 'electricity' | 'shipment';
+  category: 'diesel' | 'gas' | 'electricity' | 'shipment' | 'other';
   blob?: Blob;
   fileName?: string;
   fileSizeBytes?: number;
@@ -14,6 +23,7 @@ export interface CaptureQueueItem {
   status: CaptureQueueStatus;
   retryCount: number;
   receiptCode?: string;
+  serverDocId?: string;
   error?: string;
   createdAt: string;
   syncedAt?: string;
@@ -84,7 +94,8 @@ export async function updateCaptureStatus(
   id: string,
   status: CaptureQueueStatus,
   receiptCode?: string,
-  error?: string
+  error?: string,
+  serverDocId?: string
 ): Promise<void> {
   const db = await getDb();
   const item = await db.get('captureQueue', id);
@@ -93,6 +104,7 @@ export async function updateCaptureStatus(
   item.status = status;
   if (receiptCode) item.receiptCode = receiptCode;
   if (error) item.error = error;
+  if (serverDocId) item.serverDocId = serverDocId;
   if (status === 'received') item.syncedAt = new Date().toISOString();
   if (status === 'failed') item.retryCount++;
 
@@ -110,6 +122,8 @@ export async function processQueueUploads(
   let succeeded = 0;
   let failed = 0;
 
+  const effectiveToken = token || (typeof window !== 'undefined' ? localStorage.getItem('carbonbill_token') : null);
+
   for (const item of pending) {
     await updateCaptureStatus(item.id, 'uploading');
 
@@ -117,8 +131,8 @@ export async function processQueueUploads(
       const headers: Record<string, string> = {
         'Idempotency-Key': item.id,
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (effectiveToken) {
+        headers['Authorization'] = `Bearer ${effectiveToken}`;
       }
 
       let response: Response;
@@ -128,6 +142,7 @@ export async function processQueueUploads(
         formData.append('file', item.blob, item.fileName || 'capture.webp');
         formData.append('source', 'phone');
         formData.append('category', item.category);
+        formData.append('docType', mapCategoryToDocType(item.category));
 
         response = await fetch(apiBaseUrl, {
           method: 'POST',
@@ -158,8 +173,9 @@ export async function processQueueUploads(
 
       if (response.ok || response.status === 202 || response.status === 200) {
         const data = await response.json().catch(() => ({}));
+        const serverDocId = data.id || undefined;
         const receipt = (data.id || item.id).slice(0, 8).toUpperCase();
-        await updateCaptureStatus(item.id, 'received', receipt);
+        await updateCaptureStatus(item.id, 'received', receipt, undefined, serverDocId);
         succeeded++;
       } else {
         const errText = await response.text().catch(() => 'Upload failed');
@@ -185,6 +201,8 @@ function mapCategoryToDocType(category: string): string {
       return 'ElectricityBill';
     case 'shipment':
       return 'ShippingChallan';
+    case 'other':
+      return 'GeneralDocument';
     default:
       return 'GeneralDocument';
   }
@@ -199,6 +217,26 @@ export function triggerBackgroundSync(): void {
       .catch(() => {
         // Fallback: window online listener handles sync
       });
+  }
+}
+
+export async function retryCaptureItem(id: string): Promise<void> {
+  const db = await getDb();
+  const item = await db.get('captureQueue', id);
+  if (!item) return;
+
+  item.status = 'queued';
+  item.error = undefined;
+  await db.put('captureQueue', item);
+  await processQueueUploads();
+}
+
+export async function deleteCaptureItem(id: string): Promise<void> {
+  try {
+    const db = await getDb();
+    await db.delete('captureQueue', id);
+  } catch (err) {
+    console.warn('Could not delete capture item from local IndexedDB:', err);
   }
 }
 

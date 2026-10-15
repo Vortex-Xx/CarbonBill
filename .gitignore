@@ -31,3 +31,7 @@ Thumbs.db
 scratch/
 .env
 *.env
+appsettings.Local.json
+appsettings.*.Local.json
+.ocr-venv/
+*tessdata/

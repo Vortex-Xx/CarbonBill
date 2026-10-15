@@ -86,3 +86,19 @@ public interface IReportRenderer
     string OutputFormat { get; } // "pdf" or "xlsx"
     Task<byte[]> RenderAsync(ReportRenderRequest request, CancellationToken cancellationToken = default);
 }
+
+public interface ILangSmithTracer
+{
+    bool IsEnabled { get; }
+    Task<string?> TraceRunAsync(
+        string name,
+        string runType,
+        object inputs,
+        object? outputs,
+        DateTime startTimeUtc,
+        DateTime endTimeUtc,
+        Dictionary<string, object>? metadata = null,
+        string? errorMessage = null,
+        CancellationToken ct = default);
+}
+

@@ -4,8 +4,7 @@ export interface AuthUser {
   fullName: string;
   activeOrgId: string;
   activeOrgName: string;
-  activeRole: string;
-  memberships: Array<{ orgId: string; orgName: string; role: string }>;
+  memberships: Array<{ orgId: string; orgName: string }>;
 }
 
 const TOKEN_KEY = 'carbonbill_token';

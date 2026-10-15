@@ -17,6 +17,7 @@
     <ProjectReference Include="..\CarbonBill.Modules.Reporting\CarbonBill.Modules.Reporting.csproj" />
     <ProjectReference Include="..\CarbonBill.Modules.Notifications\CarbonBill.Modules.Notifications.csproj" />
     <ProjectReference Include="..\CarbonBill.Modules.PlatformAdmin\CarbonBill.Modules.PlatformAdmin.csproj" />
+    <ProjectReference Include="..\CarbonBill.Modules.Insights\CarbonBill.Modules.Insights.csproj" />
   </ItemGroup>
 
   <ItemGroup>

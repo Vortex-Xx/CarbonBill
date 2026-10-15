@@ -28,6 +28,7 @@ COPY src/CarbonBill.Modules.Recommendations/CarbonBill.Modules.Recommendations.c
 COPY src/CarbonBill.Modules.Reporting/CarbonBill.Modules.Reporting.csproj src/CarbonBill.Modules.Reporting/
 COPY src/CarbonBill.Modules.Notifications/CarbonBill.Modules.Notifications.csproj src/CarbonBill.Modules.Notifications/
 COPY src/CarbonBill.Modules.PlatformAdmin/CarbonBill.Modules.PlatformAdmin.csproj src/CarbonBill.Modules.PlatformAdmin/
+COPY src/CarbonBill.Modules.Insights/CarbonBill.Modules.Insights.csproj src/CarbonBill.Modules.Insights/
 COPY src/CarbonBill.Api/CarbonBill.Api.csproj src/CarbonBill.Api/
 
 RUN dotnet restore src/CarbonBill.Api/CarbonBill.Api.csproj

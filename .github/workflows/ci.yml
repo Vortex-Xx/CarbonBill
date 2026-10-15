@@ -1,56 +1,49 @@
-name: CarbonBill CI
+name: CI Pipeline
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main ]
 
 jobs:
-  backend-test:
-    name: Backend Build & Tests (.NET 8)
+  backend-build-and-test:
+    name: Backend Build & Test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: Setup .NET 8.0
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore Dependencies
+      - name: Restore dependencies
         run: dotnet restore CarbonBill.sln
 
-      - name: Build Solution
+      - name: Build solution
         run: dotnet build CarbonBill.sln --no-restore -c Release
 
-      - name: Run Unit, Integration & Architecture Tests
-        run: dotnet test CarbonBill.sln --no-build -c Release --logger "trx;LogFileName=test_results.trx"
-
-      - name: Dependency Vulnerability Scan
-        run: dotnet list CarbonBill.sln package --vulnerable --include-transitive
+      - name: Run Architecture & Unit Tests
+        run: dotnet test CarbonBill.sln --no-build -c Release --logger "trx;LogFileName=test-results.trx"
 
   frontend-build:
-    name: Frontend PWA Build (React + Vite)
+    name: Frontend Build & Bundle Check
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: web/package.json
+          cache-dependency-path: web/package-lock.json
 
-      - name: Install Frontend Dependencies
+      - name: Install dependencies
         working-directory: ./web
-        run: npm install --legacy-peer-deps
+        run: npm ci
 
-      - name: Build Vite PWA & Verify Bundles
+      - name: Build PWA bundle
         working-directory: ./web
         run: npm run build

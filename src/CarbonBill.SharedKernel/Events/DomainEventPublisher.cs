@@ -8,6 +8,15 @@ public interface IDomainEventHandler<in TEvent> where TEvent : IDomainEvent
     Task HandleAsync(TEvent domainEvent, CancellationToken cancellationToken = default);
 }
 
+
+public record DocumentExtractedEvent(
+    Guid DocumentId,
+    Guid OrgId,
+    int TierUsed,
+    string? DetectedDocType,
+    int FieldCount,
+    DateTime OccurredOnUtc) : IDomainEvent;
+
 public interface IDomainEventPublisher
 {
     Task PublishAsync<TEvent>(TEvent domainEvent, CancellationToken cancellationToken = default) where TEvent : IDomainEvent;

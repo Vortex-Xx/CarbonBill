@@ -12,10 +12,14 @@ using CarbonBill.Modules.Documents;
 using CarbonBill.Modules.Extraction;
 using CarbonBill.Modules.FactorRegistry;
 using CarbonBill.Modules.Flags;
+using CarbonBill.Modules.Flags.Jobs;
 using CarbonBill.Modules.GapDetection;
+using CarbonBill.Modules.GapDetection.Jobs;
 using CarbonBill.Modules.IdentityTenancy;
 using CarbonBill.Modules.IdentityTenancy.Endpoints;
+using CarbonBill.Modules.Insights;
 using CarbonBill.Modules.Notifications;
+using CarbonBill.Modules.Notifications.Jobs;
 using CarbonBill.Modules.Onboarding;
 using CarbonBill.Modules.PlatformAdmin;
 using CarbonBill.Modules.Recommendations;
@@ -33,7 +37,12 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
+// Load .env if present in current directory or parents
+LoadDotEnv();
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddEnvironmentVariables();
 
 // Configure Serilog
 builder.Host.UseSerilog((ctx, lc) =>
@@ -49,11 +58,22 @@ builder.Host.UseSerilog((ctx, lc) =>
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<IDomainEventPublisher, InMemoryDomainEventPublisher>();
 
-// Provider Stubs
-builder.Services.AddSingleton<IOcrProvider, FakeTesseractOcrProvider>();
-builder.Services.AddSingleton<IFileStore, LocalOrR2FileStoreStub>();
-builder.Services.AddSingleton<INotifier, LoggingNotifierStub>();
-builder.Services.AddSingleton<IReportRenderer, FakeQuestPdfReportRenderer>();
+// Provider Configuration (UseFakes=false uses real module implementations by default)
+var useFakes = builder.Configuration.GetValue<bool>("UseFakes", false);
+
+if (useFakes)
+{
+    builder.Services.AddSingleton<IOcrProvider, FakeTesseractOcrProvider>();
+    builder.Services.AddSingleton<IFileStore, LocalOrR2FileStoreStub>();
+    builder.Services.AddSingleton<INotifier, LoggingNotifierStub>();
+    builder.Services.AddSingleton<IReportRenderer, FakeQuestPdfReportRenderer>();
+}
+else
+{
+    builder.Services.AddSingleton<IOcrProvider, FakeTesseractOcrProvider>();
+    builder.Services.AddSingleton<IFileStore, LocalOrR2FileStoreStub>();
+    // Real INotifier and IReportRenderer are registered by AddNotificationsModule and AddReportingModule
+}
 
 // Register Domain Modules
 builder.Services.AddIdentityTenancyModule(builder.Configuration);
@@ -71,6 +91,7 @@ builder.Services.AddRecommendationsModule(builder.Configuration);
 builder.Services.AddReportingModule(builder.Configuration);
 builder.Services.AddNotificationsModule(builder.Configuration);
 builder.Services.AddPlatformAdminModule(builder.Configuration);
+builder.Services.AddInsightsModule(builder.Configuration);
 
 // Background Jobs (Hangfire + SQLite)
 var hangfireConn = builder.Configuration.GetConnectionString("HangfireConnection")
@@ -189,6 +210,15 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Execute CLI seed command if --seed argument is passed
+if (args.Contains("--seed"))
+{
+    Log.Information("CarbonBill CLI --seed flag detected. Loading versioned platform datasets...");
+    await DataSeeder.SeedDevelopmentDataAsync(app.Services);
+    Log.Information("Versioned platform datasets successfully loaded. Exiting process.");
+    return;
+}
+
 // Seed Database in Development
 if (app.Environment.IsDevelopment())
 {
@@ -236,11 +266,23 @@ using (var scope = app.Services.CreateScope())
         job => job.ExecuteAsync(CancellationToken.None),
         Cron.Daily(2)); // 02:00 AM UTC
 
-    // Heartbeat & missing document alert evaluation
-    recurringJobManager.AddOrUpdate<ISampleRecurringJob>(
-        "gap-detection-heartbeat",
+    // Nightly gap detection alert evaluation
+    recurringJobManager.AddOrUpdate<INightlyGapDetectionJob>(
+        "gap-detection-nightly",
         job => job.ExecuteAsync(CancellationToken.None),
-        Cron.Hourly());
+        Cron.Daily());
+
+    // Weekly consolidated notifications digest (Mondays 08:00 UTC)
+    recurringJobManager.AddOrUpdate<IWeeklyDigestJob>(
+        "notifications-weekly-digest",
+        job => job.ExecuteAsync(CancellationToken.None),
+        Cron.Weekly(DayOfWeek.Monday, 8));
+
+    // Nightly carbon flags evaluation and dismissal expiration
+    recurringJobManager.AddOrUpdate<INightlyFlagEvaluationJob>(
+        "flags-evaluation-nightly",
+        job => job.ExecuteAsync(CancellationToken.None),
+        Cron.Daily(3)); // 03:00 AM UTC
 }
 
 // Health checks
@@ -259,8 +301,49 @@ app.MapGet("/", () => Results.Ok(new
 
 // Map Module Minimal APIs
 app.MapAuthEndpoints();
+app.MapOnboardingModuleEndpoints();
+app.MapActivityUnitsModuleEndpoints();
+app.MapFactorRegistryModuleEndpoints();
+app.MapCalculationModuleEndpoints();
 app.MapDocumentsModuleEndpoints();
 app.MapExtractionModuleEndpoints();
 app.MapReviewModuleEndpoints();
+app.MapPlatformAdminModuleEndpoints();
+app.MapGapDetectionModuleEndpoints();
+app.MapNotificationsModuleEndpoints();
+app.MapFlagsModuleEndpoints();
+app.MapInsightsModuleEndpoints();
+app.MapRecommendationsModuleEndpoints();
+app.MapReportingModuleEndpoints();
 
 app.Run();
+
+static void LoadDotEnv()
+{
+    var dir = Directory.GetCurrentDirectory();
+    while (!string.IsNullOrEmpty(dir))
+    {
+        var envFile = Path.Combine(dir, ".env");
+        if (File.Exists(envFile))
+        {
+            foreach (var line in File.ReadAllLines(envFile))
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#')) continue;
+                var eqIdx = trimmed.IndexOf('=');
+                if (eqIdx > 0)
+                {
+                    var k = trimmed[..eqIdx].Trim();
+                    var v = trimmed[(eqIdx + 1)..].Trim();
+                    if (!string.IsNullOrEmpty(k) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable(k)))
+                    {
+                        Environment.SetEnvironmentVariable(k, v);
+                    }
+                }
+            }
+            break;
+        }
+        var parent = Directory.GetParent(dir);
+        dir = parent?.FullName;
+    }
+}

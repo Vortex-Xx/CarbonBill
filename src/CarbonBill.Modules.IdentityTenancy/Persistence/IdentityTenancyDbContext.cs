@@ -41,6 +41,7 @@ public class IdentityTenancyDbContext(
             entity.Property(e => e.FullName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.PasswordHash).IsRequired();
             entity.Property(e => e.PreferredLanguage).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.PasswordResetTokenHash).HasMaxLength(256);
             entity.HasIndex(e => e.Email).IsUnique();
         });
 
@@ -49,7 +50,6 @@ public class IdentityTenancyDbContext(
         {
             entity.ToTable("Memberships");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
             entity.HasIndex(e => new { e.UserId, e.OrgId }).IsUnique();
 
             entity.HasOne(e => e.User)
@@ -64,7 +64,6 @@ public class IdentityTenancyDbContext(
 
             // Global Query Filter for Tenancy Isolation
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });
@@ -75,8 +74,7 @@ public class IdentityTenancyDbContext(
             entity.ToTable("Invitations");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Token).IsRequired().HasMaxLength(128);
-            entity.Property(e => e.PinHash).IsRequired().HasMaxLength(256);
-            entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.InvitedEmail).HasMaxLength(256);
             entity.HasIndex(e => e.Token).IsUnique();
 
             entity.HasOne(e => e.Organization)
@@ -86,7 +84,6 @@ public class IdentityTenancyDbContext(
 
             // Global Query Filter
             entity.HasQueryFilter(e =>
-                _tenantContext.IsPlatformAdmin ||
                 _tenantContext.CurrentOrgId == null ||
                 e.OrgId == _tenantContext.CurrentOrgId);
         });

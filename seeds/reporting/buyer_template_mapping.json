@@ -1,0 +1,45 @@
+{
+  "templates": {
+    "HIGG_FEM_2023": {
+      "template_name": "Higg Facility Environmental Module (FEM)",
+      "target_system": "Cascale / Higg.org",
+      "field_mappings": {
+        "Scope1_Direct_Combustion_tCO2e": "payload.Scope1Tco2e",
+        "Scope2_Purchased_Electricity_tCO2e": "payload.Scope2Tco2e",
+        "Scope3_Business_Transport_tCO2e": "payload.Scope3Tco2e",
+        "Total_GHG_Emissions_tCO2e": "payload.TotalTco2e",
+        "Electricity_Consumption_kWh": "sum(payload.MonthlyActivities.ElectricityKwh)",
+        "Diesel_Consumption_Litres": "sum(payload.MonthlyActivities.DieselLitres)",
+        "NaturalGas_Consumption_m3": "sum(payload.MonthlyActivities.GasM3)",
+        "Annual_Production_Volume": "payload.ProductionVolume",
+        "Production_Unit_Metric": "payload.ProductionUnit",
+        "Emissions_Intensity_kgCO2e_per_unit": "payload.IntensityKgCo2ePerUnit",
+        "Data_Quality_Score": "payload.DataQualityScore"
+      }
+    },
+    "INDITEX_ENVIRONMENTAL": {
+      "template_name": "Inditex Green Supply Chain Register",
+      "target_system": "Inditex Supplier Portal",
+      "field_mappings": {
+        "Scope_1_Tonnes": "payload.Scope1Tco2e",
+        "Scope_2_Location_Based_Tonnes": "payload.Scope2Tco2e",
+        "Total_Carbon_Footprint": "payload.TotalTco2e",
+        "Grid_Electricity_MWh": "sum(payload.MonthlyActivities.ElectricityKwh) / 1000",
+        "Diesel_Generator_Litres": "sum(payload.MonthlyActivities.DieselLitres)",
+        "Verification_Status": "payload.VerifiedSharePercent >= 90 ? 'Verified' : 'Pending'",
+        "Boundary_Standard": "payload.BoundaryDescription"
+      }
+    },
+    "HM_GROUP_CARBON": {
+      "template_name": "H&M Group Carbon Inventory Report",
+      "target_system": "H&M Supplier Energy Dashboard",
+      "field_mappings": {
+        "Total_Scope1_tCO2e": "payload.Scope1Tco2e",
+        "Total_Scope2_tCO2e": "payload.Scope2Tco2e",
+        "Factory_Production_Pieces": "payload.ProductionVolume",
+        "Garment_Intensity_kgCO2e": "payload.IntensityKgCo2ePerUnit",
+        "DQS_Percentage": "payload.DataQualityScore"
+      }
+    }
+  }
+}

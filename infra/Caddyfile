@@ -1,0 +1,32 @@
+# Caddy configuration for CarbonBill Pilot / VPS Deployment
+{
+    email {$ACME_EMAIL:admin@carbonbill.org}
+}
+
+{$DOMAIN:localhost} {
+    # Compress responses
+    encode gzip zstd
+
+    # API Proxy
+    handle /api/* {
+        reverse_proxy api:5000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Hangfire Dashboard Proxy
+    handle /hangfire* {
+        reverse_proxy api:5000
+    }
+
+    # Health Check Endpoint
+    handle /healthz {
+        reverse_proxy api:5000
+    }
+
+    # Frontend PWA & Static Assets
+    handle {
+        reverse_proxy web:80
+    }
+}

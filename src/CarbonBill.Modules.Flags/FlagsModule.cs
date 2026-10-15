@@ -1,59 +1,89 @@
-using CarbonBill.SharedKernel.Domain;
-using CarbonBill.SharedKernel.Tenancy;
+using CarbonBill.Modules.Flags.Contracts;
+using CarbonBill.Modules.Flags.Endpoints;
+using CarbonBill.Modules.Flags.Engine;
+using CarbonBill.Modules.Flags.Fakes;
+using CarbonBill.Modules.Flags.Handlers;
+using CarbonBill.Modules.Flags.Jobs;
+using CarbonBill.Modules.Flags.Persistence;
+using CarbonBill.Modules.Flags.Seeds;
+using CarbonBill.Modules.Flags.Services;
+using CarbonBill.SharedKernel.Contracts;
+using CarbonBill.SharedKernel.Events;
+using CarbonBill.SharedKernel.Persistence;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CarbonBill.Modules.Flags;
-
-public static class FlagSeverities
-{
-    public const string Info = "Info";
-    public const string Amber = "Amber";
-    public const string Red = "Red";
-}
-
-public static class FlagStates
-{
-    public const string Open = "Open";
-    public const string Acknowledged = "Acknowledged";
-    public const string Resolved = "Resolved";
-    public const string Dismissed = "Dismissed";
-}
-
-public class FlagRule : BaseEntity
-{
-    public string Code { get; set; } = string.Empty;
-    public string Family { get; set; } = "DataQuality"; // DataQuality, Footprint, BuyerReadiness, BillSavings
-    public string NameEn { get; set; } = string.Empty;
-    public string NameBn { get; set; } = string.Empty;
-    public string Severity { get; set; } = FlagSeverities.Amber;
-    public string DefaultThresholdJson { get; set; } = "{}";
-    public bool IsActive { get; set; } = true;
-}
-
-public class Flag : AggregateRoot, ITenantScopedEntity
-{
-    public Guid OrgId { get; set; }
-    public Guid? SiteId { get; set; }
-    public Guid RuleId { get; set; }
-    public FlagRule Rule { get; set; } = null!;
-    public string Severity { get; set; } = FlagSeverities.Amber;
-    public string Period { get; set; } = string.Empty;
-    public string EvidenceJson { get; set; } = "{}"; // Document and record IDs
-    public string ExplanationEn { get; set; } = string.Empty;
-    public string ExplanationBn { get; set; } = string.Empty;
-    public string SuggestedActionEn { get; set; } = string.Empty;
-    public string SuggestedActionBn { get; set; } = string.Empty;
-    public string State { get; set; } = FlagStates.Open;
-    public string? DismissReason { get; set; }
-    public DateTime? DismissExpiresAtUtc { get; set; } // Expires after 30 days as per PDF
-}
 
 public static class FlagsModuleExtensions
 {
     public static IServiceCollection AddFlagsModule(this IServiceCollection services, IConfiguration configuration)
     {
-        // Module shell DI registration
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? "Data Source=carbonbill.db;Cache=Shared";
+
+        services.AddDbContext<FlagsDbContext>((sp, options) =>
+        {
+            options.UseSqlite(connectionString);
+            options.AddInterceptors(
+                sp.GetRequiredService<SqlitePragmaInterceptor>(),
+                sp.GetRequiredService<TenantSaveChangesInterceptor>());
+        });
+
+        // Fallback fakes for read models until other modules land
+        services.TryAddScoped<IFlagDocumentReadModel, FakeFlagDocumentReadModel>();
+        services.TryAddScoped<IFlagEmissionReadModel, FakeFlagEmissionReadModel>();
+        services.TryAddScoped<IExpectedDocRuleReader, FakeExpectedDocRuleReader>();
+        services.TryAddScoped<IDocumentReadModel, FakeDocumentReadModel>();
+        services.TryAddScoped<IEmissionReadModel, FakeEmissionReadModel>();
+        services.TryAddScoped<IProductionMetricReader, FakeProductionMetricReader>();
+        services.TryAddScoped<IBenchmarkReader, FakeBenchmarkReader>();
+        services.TryAddScoped<IFactorRegistryReadModel, FakeFactorRegistryReadModel>();
+        services.TryAddScoped<ITargetReadModel, FakeTargetReadModel>();
+
+        // Seed loader
+        services.AddScoped<IFlagRuleSeedLoader, FlagRuleSeedLoader>();
+
+        // Rule evaluators: Data-Quality family
+        services.AddScoped<IFlagRuleEvaluator, MissingDocumentRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, LowOcrConfidenceRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, DuplicateSuspectedRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, ImplausibleValueRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, EstimatedShareHighRuleEvaluator>();
+
+        // Rule evaluators: Footprint, Buyer Readiness, and Bill Savings families
+        services.AddScoped<IFlagRuleEvaluator, SpikeMomRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, HotspotDetectedRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, GensetRelianceRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, IntensityAbovePeersRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, TargetDriftRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, ReportNotReadyRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, FactorOutdatedRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, OverrideUnapprovedRuleEvaluator>();
+        services.AddScoped<IFlagRuleEvaluator, PowerFactorPenaltyRuleEvaluator>();
+
+        // Core flag service and interfaces
+        services.AddScoped<FlagsService>();
+        services.AddScoped<IFlagRaiser>(sp => sp.GetRequiredService<FlagsService>());
+        services.AddScoped<IFlagReader>(sp => sp.GetRequiredService<FlagsService>());
+        services.AddScoped<IFlagEngine>(sp => sp.GetRequiredService<FlagsService>());
+
+        // Hangfire Nightly Job
+        services.AddScoped<INightlyFlagEvaluationJob, NightlyFlagEvaluationJob>();
+
+        // Domain event handlers
+        services.AddScoped<IDomainEventHandler<DocumentConfirmedEvent>, DocumentConfirmedEventHandler>();
+        services.AddScoped<IDomainEventHandler<EmissionCalculatedEvent>, EmissionCalculatedEventHandler>();
+
         return services;
+    }
+
+    public static IEndpointRouteBuilder MapFlagsModuleEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapFlagEndpoints();
+        return endpoints;
     }
 }
